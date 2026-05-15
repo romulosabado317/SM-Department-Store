@@ -1,0 +1,1221 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { 
+  Search, User, ShoppingBag, Menu, X, ArrowRight, 
+  MapPin, Clock, Heart, ShoppingCart, 
+  Instagram, Facebook, Twitter, Youtube,
+  Gift, Star, CreditCard, ChevronRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
+// --- Types ---
+
+interface Product {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  price: number;
+  originalPrice: number | null;
+  isNew: boolean;
+  isOnSale: boolean;
+  image: string;
+  imagePlaceholderColor: string;
+}
+
+interface CartItem extends Product {
+  quantity: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+interface Brand {
+  id: number;
+  name: string;
+}
+
+interface Store {
+  id: number;
+  branchName: string;
+  address: string;
+  openingHours: string;
+  mapsUrl: string;
+}
+
+// --- Components ---
+
+const LoadingSkeleton = ({ count = 4 }: { count?: number }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="space-y-4 animate-pulse">
+        <div className="aspect-[3/4] bg-sm-border rounded-sm" />
+        <div className="h-4 bg-sm-border w-1/3" />
+        <div className="h-6 bg-sm-border w-2/3" />
+        <div className="h-4 bg-sm-border w-1/4" />
+      </div>
+    ))}
+  </div>
+);
+
+const ErrorState = ({ message }: { message: string }) => (
+  <div className="py-20 text-center space-y-4">
+    <p className="font-serif text-2xl text-sm-ink">{message}</p>
+    <button 
+      onClick={() => window.location.reload()}
+      className="px-6 py-2 border border-sm-ink text-sm uppercase tracking-widest hover:bg-sm-ink hover:text-sm-bg transition-colors"
+    >
+      Retry Connection
+    </button>
+  </div>
+);
+
+export default function App() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  
+  const [activeTab, setActiveTab ] = useState('All');
+  const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
+  
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [user, setUser] = useState<{ email: string; uid: string } | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const productsRef = useRef<HTMLElement>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const scrollToProducts = () => {
+    productsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // --- Auth Logic (Mocked for Local Use) ---
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('sm_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    
+    const savedCart = localStorage.getItem('sm_cart');
+    if (savedCart) {
+      setCartItems(JSON.parse(savedCart));
+    }
+    
+    const savedWishlist = localStorage.getItem('sm_wishlist');
+    if (savedWishlist) {
+      setWishlist(JSON.parse(savedWishlist));
+    }
+  }, []);
+
+  // Sync Data to LocalStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('sm_cart', JSON.stringify(cartItems));
+      localStorage.setItem('sm_wishlist', JSON.stringify(wishlist));
+    }
+  }, [cartItems, wishlist, user]);
+
+  const showToast = (message: string) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  };
+
+  const handleSignOut = async () => {
+    localStorage.removeItem('sm_user');
+    setUser(null);
+    setCartItems([]);
+    setWishlist([]);
+  };
+
+  const handleGoogleSignIn = async () => {
+    const mockUser = { email: 'patron@example.com', uid: 'google_123' };
+    localStorage.setItem('sm_user', JSON.stringify(mockUser));
+    setUser(mockUser);
+    setIsAuthModalOpen(false);
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    
+    const mockUser = { email, uid: 'local_' + Date.now() };
+    localStorage.setItem('sm_user', JSON.stringify(mockUser));
+    setUser(mockUser);
+    setIsAuthModalOpen(false);
+  };
+
+  // --- Data Fetching (Using Local Express API) ---
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [pRes, cRes, bRes, sRes] = await Promise.all([
+        fetch('/api/products?isNew=true'),
+        fetch('/api/categories'),
+        fetch('/api/brands'),
+        fetch('/api/stores')
+      ]);
+
+      if (!pRes.ok || !cRes.ok || !bRes.ok || !sRes.ok) throw new Error('API request failed');
+
+      const [pData, cData, bData, sData] = await Promise.all([
+        pRes.json(),
+        cRes.json(),
+        bRes.json(),
+        sRes.json()
+      ]);
+
+      setProducts(pData);
+      setCategories(cData);
+      setBrands(bData);
+      setStores(sData);
+    } catch (err) {
+      console.error('Initial fetch failed:', err);
+      setError('Connection to backend failed. Please ensure the server is running.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchFilteredProducts = useCallback(async (category: string) => {
+    if (category === 'All') {
+      return fetchData();
+    }
+    
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/products?category=${category}`);
+      if (!res.ok) throw new Error('Filter fetch failed');
+      const data = await res.json();
+      setProducts(data);
+    } catch (err) {
+      console.error('Filter fetch failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchData]);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'All') {
+      fetchData();
+    } else {
+      fetchFilteredProducts(activeTab);
+    }
+  }, [activeTab, fetchFilteredProducts, fetchData]);
+
+  // --- Countdown Logic ---
+
+  const [timeLeft, setTimeLeft] = useState({
+    days: 12, hours: 8, minutes: 45, seconds: 30
+  });
+
+  const filteredProductsBySearch = useMemo(() => {
+    return products.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0));
+  }, [cartItems]);
+
+  const addToCart = (product: Product) => {
+    setCartItems(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    showToast(`Added ${product.name} to bag`);
+    setIsCartOpen(true);
+  };
+
+  const toggleWishlist = (productId: number) => {
+    setWishlist(prev => {
+      const isIncluded = prev.includes(productId);
+      if (isIncluded) {
+        showToast('Removed from wishlist');
+        return prev.filter(id => id !== productId);
+      } else {
+        showToast('Saved to wishlist');
+        return [...prev, productId];
+      }
+    });
+  };
+
+  const removeFromCart = (id: number) => {
+    setCartItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const updateQuantity = (id: number, delta: number) => {
+    setCartItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const cartTotal = useMemo(() => {
+    return cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  }, [cartItems]);
+
+  if (error) return <ErrorState message={error} />;
+
+  return (
+    <div className="min-h-screen selection:bg-sm-accent selection:text-sm-bg selection:bg-opacity-90">
+      {/* 1. NAVBAR */}
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-700 ${
+        isScrolled ? 'bg-sm-bg/90 backdrop-blur-xl border-b border-sm-border py-4' : 'bg-transparent py-10'
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
+          <div className="flex items-center gap-16">
+            <button onClick={() => setIsMenuOpen(true)} className="lg:hidden text-sm-ink p-1">
+              <Menu size={24} strokeWidth={1.5} />
+            </button>
+            
+            <div className="flex flex-col items-center leading-none group cursor-pointer">
+              <span className="font-serif text-3xl md:text-5xl tracking-tighter transition-transform group-hover:scale-105 duration-500">SM</span>
+              <span className="text-[9px] md:text-[10px] uppercase tracking-[0.3em] font-sans font-bold text-sm-ink/40">Department Store</span>
+            </div>
+
+            <div className="flex items-center gap-10">
+              {['Women', 'Men', 'Kids', 'Toys', 'Home', 'Beauty', 'Sale'].map((link) => (
+                <button 
+                  key={link} 
+                  onClick={() => {
+                    setActiveTab(link === 'Sale' ? 'All' : link);
+                    scrollToProducts();
+                  }}
+                  className={`text-[11px] uppercase tracking-[0.25rem] transition-all duration-300 font-bold relative group ${
+                    link === 'Sale' ? 'text-rose-700' : 'text-sm-ink/70 hover:text-sm-ink'
+                  } ${activeTab === link ? 'text-sm-ink' : ''}`}
+                >
+                  {link}
+                  <span className={`absolute -bottom-2 left-0 h-[1px] bg-sm-accent transition-all duration-500 ${activeTab === link ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6 md:gap-10">
+            <div className="hidden md:flex items-center bg-sm-ink/5 rounded-full px-4 py-2 group focus-within:bg-sm-ink/10 transition-all">
+              <Search size={16} strokeWidth={1.5} className="text-sm-ink/40 group-focus-within:text-sm-ink" />
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                className="bg-transparent border-none outline-none text-[11px] uppercase tracking-widest pl-3 w-32 placeholder:text-sm-ink/20"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+              <div className="relative group/user">
+                <div 
+                  onClick={() => user ? null : setIsAuthModalOpen(true)}
+                  className="group flex items-center gap-3 cursor-pointer"
+                >
+                  <div className="relative">
+                    <User size={20} strokeWidth={1.2} className="group-hover:text-sm-accent group-hover:scale-110 transition-all duration-300" />
+                    {user && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sm-accent rounded-full border-2 border-sm-bg shadow-sm" />}
+                  </div>
+                  {user && <span className="hidden lg:block text-[9px] uppercase tracking-[0.2em] font-black text-sm-ink/40">{user.email.split('@')[0]}</span>}
+                </div>
+
+                {user && (
+                  <div className="absolute top-full right-0 mt-4 w-64 bg-sm-bg border border-sm-border shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/user:opacity-100 group-hover/user:translate-y-0 group-hover/user:pointer-events-auto transition-all duration-500 z-[100]">
+                    <div className="p-6 border-b border-sm-border flex items-center gap-4">
+                      <div className="w-10 h-10 bg-sm-hover flex items-center justify-center font-serif text-xl italic">{user.email[0].toUpperCase()}</div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest font-black text-sm-ink truncate max-w-[140px]">{user.email}</p>
+                        <p className="text-[9px] uppercase tracking-widest text-sm-ink/30">Regular Patron</p>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-1">
+                      <button className="w-full text-left px-4 py-3 text-[10px] uppercase tracking-widest font-bold text-sm-ink/60 hover:text-sm-ink hover:bg-sm-hover transition-all flex items-center gap-3">
+                        <User size={14} strokeWidth={1.5} /> My Profile
+                      </button>
+                      <button className="w-full text-left px-4 py-3 text-[10px] uppercase tracking-widest font-bold text-sm-ink/60 hover:text-sm-ink hover:bg-sm-hover transition-all flex items-center gap-3">
+                        <ShoppingBag size={14} strokeWidth={1.5} /> Orders
+                      </button>
+                      <button 
+                        onClick={() => toggleWishlist(-1)} // Just a placeholder trigger for UI testing
+                        className="w-full text-left px-4 py-3 text-[10px] uppercase tracking-widest font-bold text-sm-ink/60 hover:text-sm-ink hover:bg-sm-hover transition-all flex items-center gap-3"
+                      >
+                        <Heart size={14} strokeWidth={1.5} /> Saved Items ({wishlist.length})
+                      </button>
+                    </div>
+                    <div className="p-4 bg-sm-hover">
+                      <button 
+                        onClick={handleSignOut}
+                        className="w-full py-3 bg-sm-ink text-sm-bg text-[10px] uppercase tracking-widest font-black hover:bg-rose-900 transition-colors"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            <div 
+              onClick={() => setIsCartOpen(true)}
+              className="relative cursor-pointer group"
+            >
+              <ShoppingBag size={20} strokeWidth={1.2} className="group-hover:text-sm-accent group-hover:scale-110 transition-all duration-300" />
+              <span className="absolute -top-1.5 -right-1.5 bg-sm-ink text-sm-bg text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-black">
+                {cartCount}
+              </span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* CART DRAWER */}
+      <AnimatePresence>
+        {isCartOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCartOpen(false)}
+              className="fixed inset-0 z-[55] bg-sm-ink/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 100 }}
+              className="fixed top-0 right-0 bottom-0 w-full max-w-md z-[60] bg-sm-bg shadow-2xl flex flex-col"
+            >
+              <div className="p-8 border-b border-sm-border flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <ShoppingCart size={20} strokeWidth={1.5} />
+                  <h2 className="text-[11px] uppercase tracking-[0.4em] font-black">Your Shopping Bag</h2>
+                </div>
+                <button onClick={() => setIsCartOpen(false)} className="hover:rotate-90 transition-transform duration-500">
+                  <X size={24} strokeWidth={1} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                {cartItems.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+                    <div className="p-8 bg-sm-hover rounded-full">
+                      <ShoppingBag size={48} strokeWidth={0.5} className="text-sm-ink/20" />
+                    </div>
+                    <div className="space-y-2">
+                       <p className="font-serif text-2xl italic text-sm-ink/40">Your bag is empty.</p>
+                       <p className="text-[10px] uppercase tracking-[0.2em] text-sm-ink/20 font-bold">Discover our new arrivals</p>
+                    </div>
+                    <button 
+                      onClick={() => {setIsCartOpen(false); setActiveTab('All');}}
+                      className="px-8 py-4 bg-sm-ink text-sm-bg text-[10px] uppercase tracking-[0.3em] font-black hover:bg-sm-accent transition-colors"
+                    >
+                      Start Shopping
+                    </button>
+                  </div>
+                ) : (
+                  cartItems.map((item) => (
+                    <motion.div 
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      key={item.id} 
+                      className="flex gap-6 group"
+                    >
+                      <div className="w-24 aspect-[3/4] bg-sm-hover overflow-hidden border border-sm-border flex-shrink-0">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full" style={{ backgroundColor: item.imagePlaceholderColor }} />
+                        )}
+                      </div>
+                      <div className="flex-1 flex flex-col justify-between py-1">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-start">
+                            <p className="text-[9px] uppercase tracking-[0.2em] text-sm-ink/30 font-black">{item.brand}</p>
+                            <button onClick={() => removeFromCart(item.id)} className="text-sm-ink/20 hover:text-rose-600">
+                              <X size={14} />
+                            </button>
+                          </div>
+                          <h4 className="font-serif text-lg leading-tight group-hover:text-sm-accent transition-colors">{item.name}</h4>
+                          <p className="text-xs font-bold tracking-tight">₱{item.price.toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center border border-sm-border bg-white shadow-sm">
+                            <button onClick={() => updateQuantity(item.id, -1)} className="px-3 py-1 hover:bg-sm-hover transition-colors font-mono text-xs">-</button>
+                            <span className="px-4 py-1 text-[10px] font-black border-x border-sm-border min-w-[40px] text-center">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.id, 1)} className="px-3 py-1 hover:bg-sm-hover transition-colors font-mono text-xs">+</button>
+                          </div>
+                          <div className="w-1.5 h-1.5 bg-sm-accent/20 rounded-full" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+
+              {cartItems.length > 0 && (
+                <div className="p-8 bg-sm-hover space-y-6">
+                  <div className="flex justify-between items-end">
+                    <p className="text-[10px] uppercase tracking-[0.3em] font-black text-sm-ink/30">Total Estimate</p>
+                    <p className="text-3xl font-serif">₱{cartTotal.toLocaleString()}</p>
+                  </div>
+                  <button className="w-full py-6 bg-sm-ink text-sm-bg text-[11px] uppercase tracking-[0.4em] font-black flex items-center justify-center gap-3 group hover:bg-sm-accent transition-all duration-500 overflow-hidden relative">
+                    <span className="relative z-10 flex items-center gap-3">
+                      Secure Checkout <ArrowRight size={16} className="transform group-hover:translate-x-2 transition-transform" />
+                    </span>
+                    <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                  </button>
+                  <p className="text-center text-[9px] uppercase tracking-[0.2em] font-bold text-sm-ink/20">Complimentary Philippine shipping on all orders</p>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      {/* AUTH MODAL */}
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAuthModalOpen(false)}
+              className="fixed inset-0 z-[70] bg-sm-ink/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[75] bg-sm-bg p-12 shadow-2xl border border-sm-border"
+            >
+              <button 
+                onClick={() => setIsAuthModalOpen(false)}
+                className="absolute top-8 right-8 text-sm-ink/20 hover:text-sm-ink transition-colors"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="space-y-10">
+                <div className="text-center space-y-4">
+                  <div className="flex flex-col items-center leading-none">
+                    <span className="font-serif text-4xl tracking-tighter">SM</span>
+                    <span className="text-[8px] uppercase tracking-[0.3em] font-sans font-bold text-sm-ink/40">Patron Account</span>
+                  </div>
+                  <h2 className="font-serif text-3xl italic">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+                </div>
+
+                <form className="space-y-6" onSubmit={handleEmailAuth}>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest font-black text-sm-ink/30 ml-1">Email Address</label>
+                    <input 
+                      type="email" 
+                      name="email"
+                      required
+                      placeholder="PATRON@ADDRESS.COM"
+                      className="w-full bg-sm-hover border border-sm-border p-4 outline-none focus:border-sm-accent transition-colors text-xs tracking-widest font-bold uppercase placeholder:text-sm-ink/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest font-black text-sm-ink/30 ml-1">Password</label>
+                    <input 
+                      type="password" 
+                      name="password"
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-sm-hover border border-sm-border p-4 outline-none focus:border-sm-accent transition-colors text-xs tracking-widest font-bold uppercase placeholder:text-sm-ink/10"
+                    />
+                  </div>
+
+                  {authError && <p className="text-[10px] text-rose-600 font-bold uppercase tracking-wider text-center">{authError}</p>}
+
+                  <button 
+                    type="submit" 
+                    disabled={isAuthLoading}
+                    className="w-full py-5 bg-sm-ink text-sm-bg text-[10px] uppercase tracking-[0.4em] font-black group relative overflow-hidden active:scale-[0.98] transition-all disabled:opacity-50"
+                  >
+                    <span className="relative z-10">
+                      {isAuthLoading ? (
+                        <div className="flex items-center justify-center gap-3">
+                          <div className="w-1.5 h-1.5 bg-sm-bg rounded-full animate-bounce [animation-delay:-0.3s]" />
+                          <div className="w-1.5 h-1.5 bg-sm-bg rounded-full animate-bounce [animation-delay:-0.15s]" />
+                          <div className="w-1.5 h-1.5 bg-sm-bg rounded-full animate-bounce" />
+                        </div>
+                      ) : (
+                        authMode === 'login' ? 'Sign In' : 'Create Account'
+                      )}
+                    </span>
+                    {!isAuthLoading && <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500" />}
+                  </button>
+
+                  <div className="relative py-4 flex items-center gap-4">
+                    <div className="flex-1 h-px bg-sm-border" />
+                    <span className="text-[9px] uppercase tracking-widest font-bold text-sm-ink/20">or</span>
+                    <div className="flex-1 h-px bg-sm-border" />
+                  </div>
+
+                  <button 
+                    type="button"
+                    disabled={isAuthLoading}
+                    onClick={handleGoogleSignIn}
+                    className="w-full py-5 border border-sm-border text-sm-ink text-[10px] uppercase tracking-[0.4em] font-black group relative overflow-hidden active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    <Star size={14} className="text-sm-ink/40" /> 
+                    <span>{isAuthLoading ? 'Please Wait' : 'Continue with Google'}</span>
+                  </button>
+
+                </form>
+
+                <div className="text-center space-y-4 pt-4">
+                  <p className="text-[9px] uppercase tracking-widest font-bold text-sm-ink/30 italic">
+                    {authMode === 'login' ? "Don't have an account yet?" : "Already a regular patron?"}
+                  </p>
+                  <button 
+                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                    className="text-[10px] uppercase tracking-[0.3em] font-black text-sm-accent border-b border-sm-accent/20 pb-1 hover:border-sm-accent transition-all"
+                  >
+                    {authMode === 'login' ? 'Request Enrollment' : 'Sign In Instead'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="fixed inset-0 z-[55] bg-sm-ink/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 100 }}
+              className="fixed top-0 left-0 bottom-0 w-[85%] max-w-sm z-[60] bg-sm-bg p-12 flex flex-col shadow-2xl"
+            >
+              <button onClick={() => setIsMenuOpen(false)} className="self-end p-2 mb-16 hover:rotate-90 transition-transform duration-500">
+                <X size={32} strokeWidth={1} />
+              </button>
+              <div className="flex flex-col gap-10">
+                {['Women', 'Men', 'Kids', 'Toys', 'Home', 'Beauty', 'Sale'].map((link, i) => (
+                  <motion.a 
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 + (i * 0.1) }}
+                    key={link} 
+                    href="#arrivals"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setActiveTab(link === 'Sale' ? 'All' : link);
+                      scrollToProducts();
+                    }}
+                    className="font-serif text-5xl hover:text-sm-accent transition-all duration-500 hover:translate-x-4"
+                  >
+                    {link}
+                  </motion.a>
+                ))}
+              </div>
+              <div className="mt-auto pt-12 border-t border-sm-border space-y-6">
+                <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-sm-ink/30">Support</p>
+                <div className="grid grid-cols-2 gap-4 text-xs font-bold uppercase tracking-widest text-sm-ink/60">
+                  <a href="#">Contact</a>
+                  <a href="#">Stores</a>
+                  <a href="#">Shipping</a>
+                  <a href="#">Privacy</a>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <main>
+        {/* 2. HERO SECTION */}
+        <section className="relative h-[100vh] bg-sm-ink flex items-center justify-center overflow-hidden">
+          {/* Subtle slow moving background dots */}
+          <motion.div 
+            animate={{ 
+              backgroundPosition: ['0px 0px', '40px 40px'],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+            className="absolute inset-0 opacity-[0.03]" 
+            style={{ 
+              backgroundImage: `radial-gradient(circle at 1px 1px, #FFF 1.5px, transparent 0)`,
+              backgroundSize: '60px 60px' 
+            }} 
+          />
+          
+          <div className="max-w-5xl px-6 text-center space-y-12 z-10">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-10"
+            >
+              <div className="flex items-center justify-center gap-6">
+                <div className="w-16 h-[1px] bg-sm-accent/40" />
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Collection 2025</span>
+                <div className="w-16 h-[1px] bg-sm-accent/40" />
+              </div>
+              
+              <h1 className="font-serif text-7xl md:text-[10rem] text-sm-bg leading-[0.85] tracking-tight">
+                Refined.<br/>Essential.
+              </h1>
+              
+              <p className="text-sm-bg/40 font-sans tracking-[0.4em] uppercase text-[11px] font-bold max-w-lg mx-auto leading-loose">
+                Philosophies of high-end retail craftsmanship brought to the heart of Manila.
+              </p>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8"
+            >
+              <button className="group relative w-full sm:w-auto px-16 py-6 bg-sm-bg text-sm-ink uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden">
+                <span className="relative z-10 group-hover:text-sm-bg transition-colors duration-500">The Women Edit</span>
+                <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
+              </button>
+              <button 
+                onClick={() => {
+                  setActiveTab('Men');
+                  scrollToProducts();
+                }}
+                className="group relative w-full sm:w-auto px-16 py-6 border border-sm-bg/20 text-sm-bg uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden"
+              >
+                <span className="relative z-10">Modern Men</span>
+                <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+              </button>
+            </motion.div>
+          </div>
+
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 2 }}
+            className="absolute bottom-12 left-12 hidden xl:block"
+          >
+            <div className="flex flex-col gap-8 text-sm-bg/20 text-[10px] uppercase tracking-[0.3em] font-black [writing-mode:vertical-lr] rotate-180">
+              <a href="#" className="hover:text-sm-accent transition-colors">Instagram</a>
+              <a href="#" className="hover:text-sm-accent transition-colors">Editorial</a>
+              <a href="#" className="hover:text-sm-accent transition-colors">Stockists</a>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* 3. FEATURED CATEGORIES (Visible Grid Style) */}
+        <section className="bg-white border-b border-sm-border">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 h-auto">
+            {categories.map((category, i) => (
+              <motion.div 
+                key={category.id}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                onClick={() => {
+                  setActiveTab(category.name);
+                  scrollToProducts();
+                }}
+                className="group relative h-[600px] border-r border-sm-border last:border-r-0 cursor-pointer overflow-hidden flex flex-col items-center justify-end p-12"
+              >
+                <div className="absolute inset-0 bg-sm-hover opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                
+                {/* Vertical label background decor */}
+                <div className="absolute top-0 left-12 h-full w-[1px] bg-sm-border/30" />
+                <div className="absolute top-12 left-0 w-full h-[1px] bg-sm-border/30" />
+                
+                <motion.div 
+                  className="absolute inset-0 grayscale opacity-20 group-hover:opacity-40 group-hover:scale-110 transition-all duration-1000 ease-out"
+                  style={{ backgroundColor: ['#E8E4DF', '#F0EDE8', '#E2DCD5', '#D1CBC4', '#f5f2ed'][i % 5] }}
+                />
+
+                <div className="relative z-10 text-center space-y-6 flex flex-col items-center">
+                  <div className="p-4 bg-white/50 backdrop-blur-sm rounded-full mb-4 border border-white/50 transition-transform group-hover:scale-110">
+                    <ArrowRight size={24} strokeWidth={1} className="-rotate-45 group-hover:rotate-0 transition-transform duration-500" />
+                  </div>
+                  <h3 className="font-serif text-5xl text-sm-ink tracking-tight">{category.name}</h3>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-sm-ink/40 font-bold max-w-[150px] leading-relaxed transition-opacity opacity-0 group-hover:opacity-100 duration-500">
+                    {category.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* 4. PROMOTIONAL BANNER */}
+        <section className="bg-sm-ink py-24 px-6 md:px-12 relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-full opacity-[0.02] pointer-events-none flex items-center justify-center">
+            <span className="font-serif text-[40rem] select-none">SM</span>
+          </div>
+          
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-16 relative z-10">
+            <div className="space-y-6 text-center lg:text-left max-w-xl">
+              <div className="flex items-center justify-center lg:justify-start gap-4">
+                <div className="w-8 h-[1px] bg-sm-accent" />
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Limited Event</span>
+              </div>
+              <h2 className="font-serif text-5xl md:text-7xl text-sm-bg leading-none tracking-tight">The Mid-Year<br/>Statement.</h2>
+              <p className="text-sm-bg/40 uppercase tracking-[0.25em] text-[11px] font-bold">Uncompromising value. Up to 70% off luxury ready-to-wear.</p>
+            </div>
+            
+            <div className="flex gap-6 md:gap-12">
+              {[
+                { label: 'Days', val: timeLeft.days },
+                { label: 'Hours', val: timeLeft.hours },
+                { label: 'Mins', val: timeLeft.minutes },
+                { label: 'Secs', val: timeLeft.seconds }
+              ].map(unit => (
+                <div key={unit.label} className="flex flex-col items-center bg-white/5 border border-white/10 px-6 py-8 backdrop-blur-md rounded-sm min-w-[100px]">
+                  <span className="font-serif text-4xl md:text-6xl text-sm-bg mb-2">{unit.val.toString().padStart(2, '0')}</span>
+                  <span className="text-[9px] uppercase tracking-[0.3em] text-sm-bg/30 font-black">{unit.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <button className="group relative px-12 py-6 bg-sm-accent text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black overflow-hidden">
+              <span className="relative z-10">Discover The Sale</span>
+              <div className="absolute inset-0 bg-sm-ink translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+            </button>
+          </div>
+        </section>
+
+        {/* 5. NEW ARRIVALS */}
+        <section id="arrivals" ref={productsRef} className="py-32 md:py-48 px-6 md:px-12 max-w-7xl mx-auto space-y-24">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-12 border-b border-sm-border pb-12">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-[1px] bg-sm-accent" />
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Seasonal Edit</span>
+              </div>
+              <h2 className="font-serif text-6xl md:text-8xl text-sm-ink tracking-tight">
+                {activeTab === 'All' ? 'The New Standard.' : `${activeTab} Collection.`}
+              </h2>
+            </div>
+            
+            <div className="flex flex-wrap gap-10">
+              {['All', 'Women', 'Men', 'Kids', 'Toys', 'Home', 'Beauty'].map(tab => (
+                <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`pb-1 text-[11px] uppercase tracking-[0.3em] font-bold transition-all relative ${
+                    activeTab === tab ? 'text-sm-ink' : 'text-sm-ink/30 hover:text-sm-ink'
+                  }`}
+                >
+                  {tab}
+                  {activeTab === tab && (
+                    <motion.div layoutId="tab-underline" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-sm-accent" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <LoadingSkeleton count={8} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-24">
+              <AnimatePresence mode="popLayout">
+                {filteredProductsBySearch.map((product, i) => (
+                  <motion.div 
+                    layout
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ 
+                      duration: 0.6,
+                      delay: (i % 4) * 0.1,
+                      layout: { duration: 0.4, ease: "easeOut" }
+                    }}
+                    key={product.id} 
+                    className="group"
+                  >
+                    <div className="relative aspect-[3/4] overflow-hidden bg-sm-hover mb-8 border border-sm-border transition-all duration-700 hover:border-sm-accent/30">
+                      {product.image ? (
+                        <img 
+                          src={product.image} 
+                          alt={product.name} 
+                          className="absolute inset-0 w-full h-full object-cover transition-all duration-1000 ease-out group-hover:scale-110 group-hover:rotate-1"
+                        />
+                      ) : (
+                        <div 
+                          className="absolute inset-0 transition-all duration-1000 ease-out group-hover:scale-110 group-hover:rotate-1"
+                          style={{ backgroundColor: product.imagePlaceholderColor }}
+                        />
+                      )}
+                      
+                      <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
+                        {product.isOnSale && (
+                          <span className="bg-sm-ink text-sm-bg px-3 py-1.5 text-[9px] uppercase font-black tracking-[0.2em] backdrop-blur-md">Sale</span>
+                        )}
+                        {product.isNew && (
+                          <span className="bg-sm-accent text-sm-bg px-3 py-1.5 text-[9px] uppercase font-black tracking-[0.2em] backdrop-blur-md">New</span>
+                        )}
+                      </div>
+
+                      <div className="absolute inset-0 bg-sm-ink/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(product);
+                        }}
+                        className="absolute bottom-6 left-6 right-6 py-4 bg-sm-bg text-sm-ink text-[10px] uppercase tracking-[0.2em] font-black opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 flex items-center justify-center gap-3 active:scale-95 shadow-xl"
+                      >
+                        <ShoppingBag size={14} strokeWidth={2} /> Add to Bag
+                      </button>
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(product.id);
+                        }}
+                        className={`absolute top-6 right-6 p-3 rounded-full transition-all duration-500 -translate-y-4 group-hover:translate-y-0 ${
+                          wishlist.includes(product.id) ? 'bg-sm-accent text-sm-bg opacity-100' : 'bg-white/80 backdrop-blur-md opacity-0 group-hover:opacity-100 hover:bg-sm-accent hover:text-sm-bg'
+                        }`}
+                      >
+                        <Heart size={16} strokeWidth={1.5} fill={wishlist.includes(product.id) ? "currentColor" : "none"} />
+                      </button>
+
+                    </div>
+
+                  <div className="space-y-4 px-1">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-sm-ink/30 font-black">{product.brand}</p>
+                        <h3 className="font-serif text-2xl text-sm-ink group-hover:text-sm-accent transition-colors duration-500">{product.name}</h3>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 border-t border-sm-border/40 pt-4">
+                      <span className="text-sm font-bold tracking-tight">₱{product.price.toLocaleString()}</span>
+                      {product.originalPrice && (
+                        <span className="text-[11px] text-sm-ink/30 line-through font-medium italic">₱{product.originalPrice.toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {filteredProductsBySearch.length === 0 && !loading && (
+            <div className="py-40 text-center space-y-10 border border-sm-border bg-sm-hover/20">
+              <div className="space-y-4">
+                <h3 className="text-3xl md:text-5xl font-serif italic text-sm-ink/40 leading-tight">No garments match<br/>your criteria.</h3>
+                <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-sm-ink/20">Try adjusting your search or category</p>
+              </div>
+              <button 
+                onClick={() => {setSearchQuery(''); setActiveTab('All');}}
+                className="group relative px-12 py-5 bg-sm-ink text-sm-bg uppercase tracking-[0.4em] text-[10px] font-black overflow-hidden"
+              >
+                <span className="relative z-10">Clear Selections</span>
+                <div className="absolute inset-0 bg-sm-accent -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* 6. BRANDS (Marquee Refinement) */}
+        <section className="py-24 bg-sm-bg border-y border-sm-border overflow-hidden">
+          <div className="flex whitespace-nowrap animate-marquee">
+            {[...brands, ...brands, ...brands].map((brand, i) => (
+              <div key={i} className="flex items-center gap-16 px-16 group cursor-default">
+                <span className="font-serif text-4xl md:text-7xl text-sm-ink/10 group-hover:text-sm-ink transition-all duration-700 ease-out hover:scale-110 tracking-tighter">
+                  {brand.name}
+                </span>
+                <div className="w-3 h-3 rounded-full bg-sm-accent opacity-20" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 7. STORE LOCATOR (Split Grid) */}
+        <section id="stores" className="py-32 md:py-48 px-6 md:px-12 max-w-7xl mx-auto space-y-32">
+          <div className="flex flex-col lg:flex-row gap-24 items-start">
+            <div className="lg:w-1/3 xl:w-1/4 space-y-10 lg:sticky lg:top-40">
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-[1px] bg-sm-accent" />
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Philippine Heritage</span>
+                </div>
+                <h2 className="font-serif text-6xl text-sm-ink leading-[0.9] tracking-tight">The Houses of SM.</h2>
+              </div>
+              <p className="text-sm-ink/50 text-[13px] leading-relaxed font-medium uppercase tracking-wider">
+                Discover curated spaces that blend Philippine craftsmanship with international precision. Each flagship house is a testament to the future of retail.
+              </p>
+              <button className="flex items-center gap-4 text-[11px] border-b border-sm-ink/20 pb-2 uppercase tracking-[0.3em] font-black hover:border-sm-accent transition-all group">
+                Global Store Directory
+                <ArrowRight size={16} className="transform group-hover:translate-x-2 transition-transform" />
+              </button>
+            </div>
+            
+            <div className="lg:w-2/3 xl:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-px bg-sm-border border border-sm-border">
+              {stores.map(store => (
+                <div key={store.id} className="bg-white p-12 space-y-10 hover:bg-sm-bg transition-all duration-500 group">
+                  <div className="flex items-start justify-between">
+                    <h3 className="font-serif text-4xl text-sm-ink leading-tight">{store.branchName}</h3>
+                    <div className="p-3 bg-sm-ink/5 rounded-full group-hover:bg-sm-accent group-hover:text-sm-bg transition-colors">
+                      <MapPin size={20} strokeWidth={1} />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                       <p className="text-[10px] uppercase tracking-[0.3em] text-sm-ink/30 font-black">Location</p>
+                       <p className="text-sm font-medium leading-relaxed">{store.address}</p>
+                    </div>
+                    <div className="space-y-2 text-sm-ink/50">
+                       <p className="text-[10px] uppercase tracking-[0.3em] text-sm-ink/20 font-black">Trading Hours</p>
+                       <div className="flex items-center gap-3 font-medium">
+                        <Clock size={14} strokeWidth={1.5} />
+                        <span className="text-xs">{store.openingHours}</span>
+                       </div>
+                    </div>
+                  </div>
+                  
+                  <a 
+                    href={store.mapsUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-4 text-[11px] uppercase tracking-[0.3em] font-black border-t border-sm-border pt-8 group-hover:text-sm-accent transition-colors"
+                  >
+                    View On Maps
+                    <ChevronRight size={16} className="transform transition-transform group-hover:translate-x-1" />
+                  </a>
+                </div>
+              ))}
+              <div className="bg-sm-ink p-12 flex flex-col justify-between group cursor-pointer overflow-hidden relative">
+                <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-700 ease-in-out" />
+                <div className="relative z-10 space-y-6">
+                  <h3 className="font-serif text-4xl text-sm-bg group-hover:text-sm-bg transition-colors">More Locations.</h3>
+                  <p className="text-sm-bg/40 text-[11px] uppercase tracking-[0.2em] font-bold group-hover:text-sm-bg/60">Exploring the archipelago with 70 flagship stores.</p>
+                </div>
+                <div className="relative z-10 flex justify-end">
+                   <div className="p-6 border border-sm-bg/20 rounded-full group-hover:border-sm-bg/50 transition-colors">
+                      <ArrowRight size={32} strokeWidth={1} className="text-sm-bg" />
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 8. LOYALTY (Immersive Layout) */}
+        <section className="py-48 bg-sm-ink text-sm-bg overflow-hidden relative">
+          <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 0.03, scale: 1 }}
+            transition={{ duration: 2 }}
+            className="absolute -right-40 -top-40 w-[800px] h-[800px] border-[100px] border-sm-accent rounded-full pointer-events-none" 
+          />
+          
+          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-32 items-center">
+              <div className="space-y-12">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-[1px] bg-sm-accent" />
+                    <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Prestige Membership</span>
+                  </div>
+                  <h2 className="font-serif text-7xl md:text-8xl leading-none">Advantage.</h2>
+                  <p className="text-sm-bg/40 text-xl font-serif max-w-lg italic">"A membership defining contemporary Philippine luxury and unparalleled service."</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-6">
+                  <button 
+                    onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
+                    className="px-16 py-6 bg-sm-accent text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    Enroll Online
+                  </button>
+                  <button className="px-16 py-6 border border-sm-bg/20 text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black hover:bg-white/10 transition-all">The Benefits</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[
+                  { icon: <Gift size={32} strokeWidth={1} />, title: "Reward System", desc: "Currency earned through loyalty, redeemed through excellence." },
+                  { icon: <Star size={32} strokeWidth={1} />, title: "Concierge access", desc: "Private styling and priority entry to curated seasonal events." },
+                  { icon: <CreditCard size={32} strokeWidth={1} />, title: "Global Network", desc: "Privileges extending beyond retail to hospitality and travel." },
+                  { icon: <ArrowRight size={32} strokeWidth={1} />, title: "Platinum Tiers", desc: "Elevating the most loyal patrons to exclusive elite statuses." }
+                ].map((benefit, i) => (
+                  <motion.div 
+                    key={i} 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.2 }}
+                    className="p-10 bg-white/5 border border-white/10 backdrop-blur-md rounded-sm aspect-square flex flex-col justify-between hover:bg-white/10 transition-colors cursor-default"
+                  >
+                    <div className="text-sm-accent">{benefit.icon}</div>
+                    <div className="space-y-4">
+                      <h4 className="font-serif text-3xl font-light">{benefit.title}</h4>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-sm-bg/30 font-bold leading-relaxed">{benefit.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* TOAST NOTIFICATIONS */}
+      <div className="fixed bottom-12 right-12 z-[200] flex flex-col gap-4 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.9 }}
+              className="bg-sm-ink text-sm-bg px-8 py-5 text-[10px] uppercase tracking-[0.3em] font-black pointer-events-auto border-l-4 border-sm-accent shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-6 min-w-[280px]"
+            >
+              <div className="flex-1">{toast.message}</div>
+              <div className="w-1 h-8 bg-sm-bg/10 rounded-full overflow-hidden shrink-0">
+                <motion.div 
+                  initial={{ height: "100%" }}
+                  animate={{ height: "0%" }}
+                  transition={{ duration: 3, ease: "linear" }}
+                  className="w-full bg-sm-accent"
+                />
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* 9. FOOTER (Brutalist Modern) */}
+      <footer className="bg-sm-ink text-sm-bg pt-32 pb-16">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 border-t border-white/5 pt-24">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-16 lg:gap-24">
+            <div className="lg:col-span-5 space-y-12">
+              <div className="flex flex-col leading-none">
+                <span className="font-serif text-6xl md:text-8xl tracking-tight leading-[0.8]">SM</span>
+                <span className="text-[11px] uppercase tracking-[0.4em] font-black text-sm-bg/20 mt-4 leading-relaxed">Defining Philippine Retail Culture<br/>Through Precision Since 1958.</span>
+              </div>
+              
+              <div className="flex items-center gap-10">
+                {[Instagram, Facebook, Twitter, Youtube].map((Icon, i) => (
+                  <a key={i} href="#" className="text-sm-bg/20 hover:text-sm-accent transition-all duration-300 hover:-translate-y-1">
+                    <Icon size={24} strokeWidth={1.2} />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 space-y-10">
+              <h5 className="text-[10px] uppercase tracking-[0.4em] font-black text-sm-bg/30">The House</h5>
+              <ul className="space-y-6 text-[11px] uppercase tracking-[0.25em] font-bold text-sm-bg/50">
+                {['Our Heritage', 'Career Paths', 'Innovation', 'Ethics', 'Editorial'].map(item => (
+                  <li key={item}><a href="#" className="hover:text-sm-bg transition-colors">{item}</a></li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lg:col-span-2 space-y-10">
+              <h5 className="text-[10px] uppercase tracking-[0.4em] font-black text-sm-bg/30">Patron Care</h5>
+              <ul className="space-y-6 text-[11px] uppercase tracking-[0.25em] font-bold text-sm-bg/50">
+                {['Logistics', 'Order Trace', 'Private Styling', 'Gift Guide', 'Help Center'].map(item => (
+                  <li key={item}><a href="#" className="hover:text-sm-bg transition-colors">{item}</a></li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lg:col-span-3 space-y-10">
+              <h5 className="text-[10px] uppercase tracking-[0.4em] font-black text-sm-bg/30">Journal</h5>
+              <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-sm-bg/20 leading-loose">Subscribe to the SM Journal for early invitations and seasonal curations.</p>
+              <div className="flex flex-col gap-8">
+                <input 
+                  type="email" 
+                  placeholder="DIGITAL@ADDRESS.COM" 
+                  className="bg-transparent border-b border-white/10 py-4 focus:border-sm-accent outline-none transition-colors text-[10px] tracking-widest text-sm-bg font-black uppercase placeholder:text-sm-bg/20"
+                />
+                <button className="text-[10px] uppercase tracking-[0.5em] font-black text-left hover:text-sm-accent group flex items-center gap-3 transition-colors">
+                  Join The Circle
+                  <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-32 pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-12">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-12 items-center text-[9px] uppercase tracking-[0.4em] font-black text-sm-bg/20">
+              <p>© 2025 SM Department Store. ALL RIGHTS RESERVED.</p>
+              <p className="hidden md:block">MANILA · PASAY · QUEZON CITY</p>
+            </div>
+            <div className="flex gap-10 text-[9px] uppercase tracking-[0.4em] font-black text-sm-bg/20">
+              <a href="#" className="hover:text-sm-accent transition-colors">Privacy</a>
+              <a href="#" className="hover:text-sm-accent transition-colors">Terms</a>
+              <a href="#" className="hover:text-sm-accent transition-colors">Cookies</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
