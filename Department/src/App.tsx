@@ -878,80 +878,54 @@ export default function App() {
           </motion.div>
         </section>
 
-        {/* 3. FEATURED CATEGORIES — EXPANDING IMAGE PANELS */}
-        <section className="h-screen flex overflow-hidden border-b border-sm-border">
-          {categories.map((category, i) => (
-            <motion.div
-              key={category.id}
-              animate={{
-                flex: hoveredCategory === null ? 1 : hoveredCategory === category.id ? 5 : 0.4,
-              }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              onHoverStart={() => setHoveredCategory(category.id)}
-              onHoverEnd={() => setHoveredCategory(null)}
-              onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
-              className="relative overflow-hidden cursor-pointer"
-              style={{ minWidth: 0 }}
-            >
-              {/* Background image */}
-              <motion.img
-                src={CATEGORY_IMAGES[category.name] ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80'}
-                alt={category.name}
-                animate={{ scale: hoveredCategory === category.id ? 1.06 : 1 }}
-                transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-
-              {/* Gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
-
-              {/* Panel divider */}
-              <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
-
-              {/* Index */}
-              <span className="absolute top-8 left-8 text-[10px] uppercase tracking-[0.4em] font-black text-white/30 z-10">
-                0{i + 1}
+        {/* 3. FEATURED CATEGORIES — Clean Grid */}
+        <section className="bg-sm-bg border-b border-sm-border">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 py-24 md:py-32">
+            <div className="flex items-end justify-between mb-16 border-b border-sm-border pb-10">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-px bg-sm-accent" />
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Browse The House</span>
+                </div>
+                <h2 className="font-serif text-5xl md:text-6xl text-sm-ink tracking-tight">Shop by Category</h2>
+              </div>
+              <span className="hidden md:block text-[10px] uppercase tracking-[0.4em] font-black text-sm-ink/20">
+                {categories.length} Departments
               </span>
+            </div>
 
-              {/* Collapsed label — vertical text */}
-              <AnimatePresence>
-                {hoveredCategory !== category.id && (
-                  <motion.p
-                    key="vertical"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="absolute inset-0 flex items-center justify-center font-serif text-xl text-white/70 tracking-tight pointer-events-none"
-                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}
-                  >
-                    {category.name}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-
-              {/* Expanded content */}
-              <AnimatePresence>
-                {hoveredCategory === category.id && (
-                  <motion.div
-                    key="expanded"
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 12 }}
-                    transition={{ duration: 0.4, delay: 0.1 }}
-                    className="absolute bottom-0 left-0 right-0 p-12 space-y-4 z-10"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/40">{category.description}</p>
-                    <h3 className="font-serif text-6xl md:text-8xl text-white leading-none tracking-tight">{category.name}</h3>
-                    <div className="flex items-center gap-4 pt-4 text-[11px] uppercase tracking-[0.4em] font-black text-white/60 group hover:text-white transition-colors border-b border-white/20 pb-2 w-fit">
-                      Shop Collection
-                      <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-500" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-sm-border border border-sm-border">
+              {categories.map((category, i) => (
+                <motion.button
+                  key={category.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
+                  className="group bg-sm-bg text-left p-10 md:p-12 flex flex-col justify-between gap-12 min-h-[260px] hover:bg-sm-hover transition-colors duration-300"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="font-serif text-5xl text-sm-ink/[0.08] leading-none group-hover:text-sm-ink/[0.15] transition-colors duration-500">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <div className="p-3 border border-sm-border rounded-full group-hover:border-sm-accent group-hover:bg-sm-accent group-hover:text-sm-bg transition-all duration-300">
+                      <ArrowRight size={16} strokeWidth={1.5} className="group-hover:translate-x-0.5 transition-transform duration-300" />
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="font-serif text-4xl md:text-5xl text-sm-ink leading-tight tracking-tight group-hover:text-sm-accent transition-colors duration-300">
+                      {category.name}
+                    </h3>
+                    <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-sm-ink/30 leading-relaxed">
+                      {category.description}
+                    </p>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* 4. PROMOTIONAL BANNER */}
