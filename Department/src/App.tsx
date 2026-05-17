@@ -85,6 +85,15 @@ const ErrorState = ({ message }: { message: string }) => (
   </div>
 );
 
+const CATEGORY_IMAGES: Record<string, string> = {
+  Women:  'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80',
+  Men:    'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=1200&q=80',
+  Kids:   'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=1200&q=80',
+  Toys:   'https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=1200&q=80',
+  Home:   'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80',
+  Beauty: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1200&q=80',
+};
+
 function CounterAnimation({ value, suffix }: { value: number; suffix: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true });
@@ -124,10 +133,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPreloading, setIsPreloading] = useState(true);
+  const [hoveredCategory, setHoveredCategory] = useState<number | null>(null);
 
   const productsRef = useRef<HTMLElement>(null);
   const heroRef = useRef<HTMLElement>(null);
-  const categoriesRef = useRef<HTMLElement>(null);
   const lenisRef = useRef<any>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -386,12 +395,6 @@ export default function App() {
   const heroTextY = useTransform(heroProgress, [0, 1], ['0%', '-25%']);
   const heroOpacity = useTransform(heroProgress, [0, 0.65], [1, 0]);
   const heroBgScale = useTransform(heroProgress, [0, 1], [1, 1.2]);
-
-  const { scrollYProgress: categoriesProgress } = useScroll({
-    target: categoriesRef,
-    offset: ['start start', 'end end'],
-  });
-  const categoriesX = useTransform(categoriesProgress, [0, 1], ['0vw', '-400vw']);
 
   if (error) return <ErrorState message={error} />;
 
@@ -883,61 +886,80 @@ export default function App() {
           </motion.div>
         </section>
 
-        {/* OVERSIZED MARQUEE DIVIDER */}
-        <div className="bg-sm-ink py-5 overflow-hidden select-none border-b border-white/5">
-          <div className="flex animate-marquee-slow whitespace-nowrap">
-            {[...Array(8)].map((_, i) => (
-              <span key={i} className="font-serif text-[7vw] text-sm-bg/[0.07] tracking-tighter mx-12 shrink-0 leading-none">
-                REFINED · ESSENTIAL · CURATED · ELEVATED · PRESTIGE · 2026
+        {/* 3. FEATURED CATEGORIES — EXPANDING IMAGE PANELS */}
+        <section className="h-screen flex overflow-hidden border-b border-sm-border">
+          {categories.map((category, i) => (
+            <motion.div
+              key={category.id}
+              animate={{
+                flex: hoveredCategory === null ? 1 : hoveredCategory === category.id ? 5 : 0.4,
+              }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              onHoverStart={() => setHoveredCategory(category.id)}
+              onHoverEnd={() => setHoveredCategory(null)}
+              onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
+              className="relative overflow-hidden cursor-pointer"
+              style={{ minWidth: 0 }}
+            >
+              {/* Background image */}
+              <motion.img
+                src={CATEGORY_IMAGES[category.name] ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80'}
+                alt={category.name}
+                animate={{ scale: hoveredCategory === category.id ? 1.06 : 1 }}
+                transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+
+              {/* Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
+
+              {/* Panel divider */}
+              <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
+
+              {/* Index */}
+              <span className="absolute top-8 left-8 text-[10px] uppercase tracking-[0.4em] font-black text-white/30 z-10">
+                0{i + 1}
               </span>
-            ))}
-          </div>
-        </div>
 
-        {/* 3. FEATURED CATEGORIES — HORIZONTAL PINNED SCROLL */}
-        <section ref={categoriesRef} className="relative h-[600vh] bg-sm-bg">
-          <div className="sticky top-0 h-screen overflow-hidden">
-            {/* Section label */}
-            <div className="absolute top-12 left-12 z-20 flex items-center gap-4">
-              <div className="w-8 h-[1px] bg-sm-accent" />
-              <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Browse The House</span>
-            </div>
-            {/* Scroll hint */}
-            <div className="absolute top-12 right-12 z-20 text-[9px] uppercase tracking-[0.4em] font-black text-sm-ink/20 hidden md:block">
-              Scroll to explore →
-            </div>
-
-            <motion.div style={{ x: categoriesX }} className="flex h-full items-stretch w-max will-change-transform">
-              {categories.map((category, i) => (
-                <div
-                  key={category.id}
-                  onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
-                  className="relative w-screen h-screen flex items-center justify-center cursor-pointer group overflow-hidden border-r border-sm-border/40"
-                  style={{ backgroundColor: ['#F5F2EE', '#EFECE7', '#EAE6E0', '#E3DED8', '#DDD7D0'][i % 5] }}
-                >
-                  {/* Bleeder oversized category name */}
-                  <h2 className="font-serif text-[20vw] text-sm-ink/[0.07] group-hover:text-sm-ink/[0.14] transition-colors duration-700 leading-none tracking-tighter select-none pointer-events-none absolute inset-x-0 text-center">
+              {/* Collapsed label — vertical text */}
+              <AnimatePresence>
+                {hoveredCategory !== category.id && (
+                  <motion.p
+                    key="vertical"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute inset-0 flex items-center justify-center font-serif text-xl text-white/70 tracking-tight pointer-events-none"
+                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}
+                  >
                     {category.name}
-                  </h2>
+                  </motion.p>
+                )}
+              </AnimatePresence>
 
-                  {/* Center card */}
-                  <div className="relative z-10 flex flex-col items-center gap-8 text-center">
-                    <span className="text-[10px] uppercase tracking-[0.5em] font-black text-sm-ink/30">0{i + 1} / 0{categories.length}</span>
-                    <div className="w-[1px] h-16 bg-sm-ink/20" />
-                    <h3 className="font-serif text-7xl md:text-9xl text-sm-ink tracking-tight leading-none">{category.name}</h3>
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-sm-ink/40 font-bold max-w-xs leading-loose">{category.description}</p>
-                    <div className="mt-4 flex items-center gap-4 border-b border-sm-ink/20 pb-2 text-[10px] uppercase tracking-[0.4em] font-black text-sm-ink/50 group-hover:text-sm-ink group-hover:border-sm-ink transition-all duration-500">
-                      Shop {category.name}
+              {/* Expanded content */}
+              <AnimatePresence>
+                {hoveredCategory === category.id && (
+                  <motion.div
+                    key="expanded"
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 12 }}
+                    transition={{ duration: 0.4, delay: 0.1 }}
+                    className="absolute bottom-0 left-0 right-0 p-12 space-y-4 z-10"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/40">{category.description}</p>
+                    <h3 className="font-serif text-6xl md:text-8xl text-white leading-none tracking-tight">{category.name}</h3>
+                    <div className="flex items-center gap-4 pt-4 text-[11px] uppercase tracking-[0.4em] font-black text-white/60 group hover:text-white transition-colors border-b border-white/20 pb-2 w-fit">
+                      Shop Collection
                       <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-500" />
                     </div>
-                  </div>
-
-                  {/* Corner index */}
-                  <span className="absolute bottom-16 left-16 font-serif text-[18vw] text-sm-ink/[0.04] leading-none select-none pointer-events-none">{String(i + 1).padStart(2, '0')}</span>
-                </div>
-              ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
-          </div>
+          ))}
         </section>
 
         {/* 4. PROMOTIONAL BANNER */}
