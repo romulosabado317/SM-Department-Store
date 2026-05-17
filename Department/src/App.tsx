@@ -10,14 +10,11 @@ import {
   Instagram, Facebook, Twitter, Youtube,
   Gift, Star, CreditCard, ChevronRight
 } from 'lucide-react';
-import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useInView, animate } from 'motion/react';
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useInView, animate } from 'motion/react';
 import Lenis from 'lenis';
-import Cursor from './components/Cursor';
 import TextReveal from './components/TextReveal';
 import ScrollProgress from './components/ScrollProgress';
 import Preloader from './components/Preloader';
-import GrainOverlay from './components/GrainOverlay';
-import ScrambleText from './components/ScrambleText';
 
 // --- Types ---
 
@@ -133,7 +130,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPreloading, setIsPreloading] = useState(true);
-  const [hoveredCategory, setHoveredCategory] = useState<number | null>(null);
 
   const productsRef = useRef<HTMLElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -394,7 +390,6 @@ export default function App() {
   });
   const heroTextY = useTransform(heroProgress, [0, 1], ['0%', '-25%']);
   const heroOpacity = useTransform(heroProgress, [0, 0.65], [1, 0]);
-  const heroBgScale = useTransform(heroProgress, [0, 1], [1, 1.2]);
 
   if (error) return <ErrorState message={error} />;
 
@@ -571,7 +566,7 @@ export default function App() {
                     >
                       <div className="w-24 aspect-[3/4] bg-sm-hover overflow-hidden border border-sm-border flex-shrink-0">
                         {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <img src={item.image} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full" style={{ backgroundColor: item.imagePlaceholderColor }} />
                         )}
@@ -910,6 +905,7 @@ export default function App() {
                 <img
                   src={CATEGORY_IMAGES[category.name]}
                   alt={category.name}
+                  loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -943,6 +939,7 @@ export default function App() {
                 <img
                   src={CATEGORY_IMAGES[category.name]}
                   alt={category.name}
+                  loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
@@ -1054,9 +1051,10 @@ export default function App() {
                   >
                     <div className="relative aspect-[3/4] overflow-hidden bg-sm-hover mb-8 border border-sm-border transition-all duration-700 hover:border-sm-accent/30">
                       {product.image ? (
-                        <img 
-                          src={product.image} 
-                          alt={product.name} 
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          loading="lazy"
                           className="absolute inset-0 w-full h-full object-cover transition-all duration-1000 ease-out group-hover:scale-110 group-hover:rotate-1"
                         />
                       ) : (
@@ -1256,6 +1254,7 @@ export default function App() {
               <img
                 src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1400&q=80"
                 alt="SM Fashion"
+                loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -1294,6 +1293,7 @@ export default function App() {
                   <img
                     src={item.img}
                     alt={item.title}
+                    loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-500" />
