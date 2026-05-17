@@ -820,17 +820,6 @@ export default function App() {
             style={{ y: heroTextY, opacity: heroOpacity }}
             className="absolute inset-x-0 bottom-0 z-10 p-10 md:p-16 lg:p-24 space-y-8"
           >
-            {/* Eyebrow */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-4"
-            >
-              <div className="w-10 h-px bg-sm-accent" />
-              <span className="text-sm-accent text-[10px] uppercase tracking-[0.5em] font-black">Est. 1958 · Manila, Philippines</span>
-            </motion.div>
-
             {/* Headline */}
             <div className="overflow-hidden">
               {['The New', 'Standard.'].map((line, i) => (
@@ -891,53 +880,75 @@ export default function App() {
           </motion.div>
         </section>
 
-        {/* 3. FEATURED CATEGORIES — Clean Grid */}
-        <section className="bg-sm-bg border-b border-sm-border">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 py-24 md:py-32">
-            <div className="flex items-end justify-between mb-16 border-b border-sm-border pb-10">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-px bg-sm-accent" />
-                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Browse The House</span>
-                </div>
-                <h2 className="font-serif text-5xl md:text-6xl text-sm-ink tracking-tight">Shop by Category</h2>
-              </div>
-              <span className="hidden md:block text-[10px] uppercase tracking-[0.4em] font-black text-sm-ink/20">
-                {categories.length} Departments
-              </span>
+        {/* 3. FEATURED CATEGORIES — Editorial Image Grid */}
+        <section className="bg-sm-ink">
+          {/* Section label */}
+          <div className="max-w-7xl mx-auto px-6 md:px-12 pt-20 pb-10 flex items-end justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-px bg-sm-accent" />
+              <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Browse The House</span>
             </div>
+            <span className="text-white/20 text-[10px] uppercase tracking-[0.4em] font-black hidden md:block">Shop by Category</span>
+          </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-sm-border border border-sm-border">
-              {categories.map((category, i) => (
-                <motion.button
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
-                  className="group bg-sm-bg text-left p-10 md:p-12 flex flex-col justify-between gap-12 min-h-[260px] hover:bg-sm-hover transition-colors duration-300"
-                >
-                  <div className="flex items-start justify-between">
-                    <span className="font-serif text-5xl text-sm-ink/[0.08] leading-none group-hover:text-sm-ink/[0.15] transition-colors duration-500">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <div className="p-3 border border-sm-border rounded-full group-hover:border-sm-accent group-hover:bg-sm-accent group-hover:text-sm-bg transition-all duration-300">
-                      <ArrowRight size={16} strokeWidth={1.5} className="group-hover:translate-x-0.5 transition-transform duration-300" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="font-serif text-4xl md:text-5xl text-sm-ink leading-tight tracking-tight group-hover:text-sm-accent transition-colors duration-300">
+          {/* Top row — two tall featured cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2" style={{ height: '70vh' }}>
+            {categories.slice(0, 2).map((category, i) => (
+              <motion.div
+                key={category.id}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: i * 0.15 }}
+                onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
+                className="relative overflow-hidden cursor-pointer group border-r border-white/5 last:border-r-0"
+              >
+                <img
+                  src={CATEGORY_IMAGES[category.name]}
+                  alt={category.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 space-y-3">
+                  <p className="text-white/40 text-[10px] uppercase tracking-[0.4em] font-black">{category.description}</p>
+                  <div className="flex items-end justify-between">
+                    <h3 className="font-serif text-5xl md:text-7xl text-white tracking-tight leading-none group-hover:text-sm-accent transition-colors duration-500">
                       {category.name}
                     </h3>
-                    <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-sm-ink/30 leading-relaxed">
-                      {category.description}
-                    </p>
+                    <div className="mb-1 p-3 border border-white/20 rounded-full group-hover:bg-sm-accent group-hover:border-sm-accent transition-all duration-300">
+                      <ArrowRight size={18} strokeWidth={1.5} className="text-white" />
+                    </div>
                   </div>
-                </motion.button>
-              ))}
-            </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Bottom row — four smaller cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4" style={{ height: '42vh' }}>
+            {categories.slice(2).map((category, i) => (
+              <motion.div
+                key={category.id}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 + i * 0.1 }}
+                onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
+                className="relative overflow-hidden cursor-pointer group border-t border-white/5 border-r border-white/5 last:border-r-0"
+              >
+                <img
+                  src={CATEGORY_IMAGES[category.name]}
+                  alt={category.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                  <h3 className="font-serif text-3xl md:text-4xl text-white tracking-tight leading-none group-hover:text-sm-accent transition-colors duration-500">
+                    {category.name}
+                  </h3>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </section>
 
