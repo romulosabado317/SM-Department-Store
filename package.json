@@ -1,0 +1,9 @@
+{
+  "name": "sm-department-store",
+  "private": true,
+  "scripts": {
+    "dev": "cd Department && npm run dev",
+    "build": "cd Department && npm run build",
+    "install": "cd Department && npm install"
+  }
+}
