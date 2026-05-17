@@ -401,7 +401,6 @@ export default function App() {
   return (
     <div className="min-h-screen selection:bg-sm-accent selection:text-sm-bg selection:bg-opacity-90">
       {isPreloading && <Preloader onComplete={() => setIsPreloading(false)} />}
-      <GrainOverlay />
       <ScrollProgress />
       <Cursor />
       {/* 1. NAVBAR */}
@@ -783,105 +782,98 @@ export default function App() {
       </AnimatePresence>
 
       <main>
-        {/* 2. HERO SECTION */}
-        <section ref={heroRef} className="relative h-[100vh] bg-sm-ink flex items-center justify-center overflow-hidden">
-          <motion.div style={{ scale: heroBgScale }} className="absolute inset-0">
+        {/* 2. HERO SECTION — Editorial Split */}
+        <section ref={heroRef} className="relative h-screen bg-sm-ink flex overflow-hidden">
+
+          {/* Left: Typography column */}
+          <motion.div
+            style={{ y: heroTextY, opacity: heroOpacity }}
+            className="relative z-10 flex flex-col justify-between p-10 md:p-16 lg:p-24 w-full md:w-[55%]"
+          >
+            {/* Top meta bar */}
             <motion.div
-              animate={{ backgroundPosition: ['0px 0px', '40px 40px'] }}
-              transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-              className="absolute inset-0 opacity-[0.03]"
-              style={{
-                backgroundImage: `radial-gradient(circle at 1px 1px, #FFF 1.5px, transparent 0)`,
-                backgroundSize: '60px 60px'
-              }}
-            />
-          </motion.div>
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 1 }}
+              className="flex items-center justify-between"
+            >
+              <span className="text-[10px] uppercase tracking-[0.5em] text-sm-bg/30 font-black">Est. 1958 · Manila</span>
+              <span className="text-[10px] uppercase tracking-[0.5em] text-sm-bg/30 font-black">Collection 2026</span>
+            </motion.div>
 
-          <motion.div style={{ y: heroTextY, opacity: heroOpacity }} className="max-w-5xl px-6 text-center space-y-12 z-10">
-            <div className="space-y-10">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center justify-center gap-6"
-              >
-                <div className="w-16 h-[1px] bg-sm-accent/40" />
-                <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Collection 2026</span>
-                <div className="w-16 h-[1px] bg-sm-accent/40" />
-              </motion.div>
-
-              <h1 className="font-serif text-7xl md:text-[10rem] text-sm-bg leading-[0.85] tracking-tight">
-                {['Refined.', 'Essential.'].map((word, i) => (
-                  <div key={word} className="overflow-hidden">
-                    <motion.span
-                      initial={{ y: '110%' }}
-                      animate={{ y: 0 }}
-                      transition={{ duration: 1.2, delay: 0.35 + i * 0.18, ease: [0.22, 1, 0.36, 1] }}
-                      className="block"
-                    >
-                      {word}
-                    </motion.span>
-                  </div>
-                ))}
-              </h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                className="text-sm-bg/40 font-sans tracking-[0.4em] uppercase text-[11px] font-bold max-w-lg mx-auto leading-loose"
-              >
-                Philosophies of high-end retail craftsmanship brought to the heart of Manila.
-              </motion.p>
+            {/* Stacked headline */}
+            <div>
+              {['The', 'New', 'Standard.'].map((word, i) => (
+                <div key={word} className="overflow-hidden">
+                  <motion.span
+                    initial={{ y: '110%' }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 1.1, delay: 0.4 + i * 0.14, ease: [0.22, 1, 0.36, 1] }}
+                    className="block font-serif text-[18vw] md:text-[9vw] leading-[0.88] tracking-tight text-sm-bg"
+                  >
+                    {word}
+                  </motion.span>
+                </div>
+              ))}
             </div>
 
+            {/* Bottom: description + CTA */}
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0, duration: 1, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8"
+              transition={{ delay: 1.0, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-8"
             >
-              <button
-                onClick={() => { setActiveTab('Women'); scrollToProducts(); }}
-                className="group relative w-full sm:w-auto px-16 py-6 bg-sm-bg text-sm-ink uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden"
-              >
-                <span className="relative z-10 group-hover:text-sm-bg transition-colors duration-500">The Women Edit</span>
-                <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('Men'); scrollToProducts(); }}
-                className="group relative w-full sm:w-auto px-16 py-6 border border-sm-bg/20 text-sm-bg uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden"
-              >
-                <span className="relative z-10">Modern Men</span>
-                <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
-              </button>
+              <div className="w-12 h-px bg-sm-accent" />
+              <p className="text-sm-bg/40 text-[11px] uppercase tracking-[0.35em] font-bold max-w-xs leading-loose">
+                High-end retail craftsmanship brought to the heart of Manila.
+              </p>
+              <div className="flex items-center gap-8 flex-wrap">
+                <button
+                  onClick={() => { setActiveTab('Women'); scrollToProducts(); }}
+                  className="group relative px-10 py-5 bg-sm-bg text-sm-ink uppercase tracking-[0.25em] text-[10px] font-black overflow-hidden"
+                >
+                  <span className="relative z-10 group-hover:text-sm-bg transition-colors duration-500">Shop Women</span>
+                  <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
+                </button>
+                <button
+                  onClick={() => { setActiveTab('Men'); scrollToProducts(); }}
+                  className="flex items-center gap-3 text-sm-bg/50 text-[10px] uppercase tracking-[0.35em] font-black hover:text-sm-bg transition-colors duration-300"
+                >
+                  Shop Men <ArrowRight size={14} />
+                </button>
+              </div>
             </motion.div>
           </motion.div>
 
+          {/* Right: Full-bleed fashion image */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 2 }}
-            className="absolute bottom-12 left-12 hidden xl:block"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="hidden md:block absolute right-0 top-0 bottom-0 w-[48%] overflow-hidden"
           >
-            <div className="flex flex-col gap-8 text-sm-bg/20 text-[10px] uppercase tracking-[0.3em] font-black [writing-mode:vertical-lr] rotate-180">
-              <a href="#" className="hover:text-sm-accent transition-colors">Instagram</a>
-              <a href="#" className="hover:text-sm-accent transition-colors">Editorial</a>
-              <a href="#" className="hover:text-sm-accent transition-colors">Stockists</a>
-            </div>
+            <motion.img
+              src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1400&q=80"
+              alt="SM Collection 2026"
+              style={{ scale: heroBgScale }}
+              className="w-full h-full object-cover object-top"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-sm-ink via-sm-ink/20 to-transparent pointer-events-none" />
           </motion.div>
 
+          {/* Scroll cue */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.8, duration: 1.5 }}
-            className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none"
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none z-10"
           >
             <span className="text-[8px] uppercase tracking-[0.5em] text-sm-bg/20 font-black">Scroll</span>
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-[1px] h-10 bg-gradient-to-b from-sm-bg/30 to-transparent"
+              className="w-px h-10 bg-gradient-to-b from-sm-bg/30 to-transparent"
             />
           </motion.div>
         </section>
@@ -972,7 +964,7 @@ export default function App() {
             <div className="space-y-6 text-center lg:text-left max-w-xl">
               <div className="flex items-center justify-center lg:justify-start gap-4">
                 <div className="w-8 h-[1px] bg-sm-accent" />
-                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black"><ScrambleText text="Limited Event" /></span>
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Limited Event</span>
               </div>
               <TextReveal>
                 <h2 className="font-serif text-5xl md:text-7xl text-sm-bg leading-none tracking-tight">The Mid-Year<br/>Statement.</h2>
@@ -1010,7 +1002,7 @@ export default function App() {
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <div className="w-8 h-[1px] bg-sm-accent" />
-                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black"><ScrambleText text="Seasonal Edit" /></span>
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Seasonal Edit</span>
               </div>
               <TextReveal>
                 <h2 className="font-serif text-6xl md:text-8xl text-sm-ink tracking-tight">
@@ -1194,7 +1186,7 @@ export default function App() {
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-8 h-[1px] bg-sm-accent" />
-                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black"><ScrambleText text="Philippine Heritage" /></span>
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Philippine Heritage</span>
                 </div>
                 <TextReveal>
                   <h2 className="font-serif text-6xl text-sm-ink leading-[0.9] tracking-tight">The Houses of SM.</h2>
@@ -1276,7 +1268,7 @@ export default function App() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-[1px] bg-sm-accent" />
-                    <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black"><ScrambleText text="Prestige Membership" /></span>
+                    <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Prestige Membership</span>
                   </div>
                   <TextReveal>
                     <h2 className="font-serif text-[14vw] leading-none tracking-tighter">Advantage.</h2>
