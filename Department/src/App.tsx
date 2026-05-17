@@ -402,7 +402,6 @@ export default function App() {
     <div className="min-h-screen selection:bg-sm-accent selection:text-sm-bg selection:bg-opacity-90">
       {isPreloading && <Preloader onComplete={() => setIsPreloading(false)} />}
       <ScrollProgress />
-      <Cursor />
       {/* 1. NAVBAR */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-700 ${
         isScrolled ? 'bg-sm-bg/90 backdrop-blur-xl border-b border-sm-border py-4' : 'bg-transparent py-10'
