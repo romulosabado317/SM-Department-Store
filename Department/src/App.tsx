@@ -84,7 +84,7 @@ export default function App() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   
-  const [activeTab, setActiveTab ] = useState('All');
+  const [activeTab, setActiveTab] = useState('All');
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -152,21 +152,41 @@ export default function App() {
   };
 
   const handleGoogleSignIn = async () => {
-    const mockUser = { email: 'patron@example.com', uid: 'google_123' };
-    localStorage.setItem('sm_user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    setIsAuthModalOpen(false);
+    setIsAuthLoading(true);
+    setAuthError(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 900));
+      const mockUser = { email: 'patron@sm.com.ph', uid: 'google_123' };
+      localStorage.setItem('sm_user', JSON.stringify(mockUser));
+      setUser(mockUser);
+      setIsAuthModalOpen(false);
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
   const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setAuthError(null);
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
-    
-    const mockUser = { email, uid: 'local_' + Date.now() };
-    localStorage.setItem('sm_user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    setIsAuthModalOpen(false);
+    const password = formData.get('password') as string;
+
+    if (password.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsAuthLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 900));
+      const mockUser = { email, uid: 'local_' + Date.now() };
+      localStorage.setItem('sm_user', JSON.stringify(mockUser));
+      setUser(mockUser);
+      setIsAuthModalOpen(false);
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
   // --- Data Fetching (Using Local Express API) ---
@@ -238,9 +258,19 @@ export default function App() {
 
   // --- Countdown Logic ---
 
-  const [timeLeft, setTimeLeft] = useState({
-    days: 12, hours: 8, minutes: 45, seconds: 30
-  });
+  const saleEndDate = new Date('2026-06-30T23:59:59');
+  const calcTimeLeft = () => {
+    const diff = saleEndDate.getTime() - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / 1000 / 60) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calcTimeLeft());
 
   const filteredProductsBySearch = useMemo(() => {
     return products.filter(p => 
@@ -251,15 +281,7 @@ export default function App() {
   }, [products, searchQuery]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        return prev;
-      });
-    }, 1000);
+    const timer = setInterval(() => setTimeLeft(calcTimeLeft()), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -280,6 +302,11 @@ export default function App() {
   };
 
   const toggleWishlist = (productId: number) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      showToast('Sign in to save items to your wishlist');
+      return;
+    }
     setWishlist(prev => {
       const isIncluded = prev.includes(productId);
       if (isIncluded) {
@@ -329,7 +356,7 @@ export default function App() {
               <span className="text-[9px] md:text-[10px] uppercase tracking-[0.3em] font-sans font-bold text-sm-ink/40">Department Store</span>
             </div>
 
-            <div className="flex items-center gap-10">
+            <div className="hidden lg:flex items-center gap-10">
               {['Women', 'Men', 'Kids', 'Toys', 'Home', 'Beauty', 'Sale'].map((link) => (
                 <button 
                   key={link} 
@@ -387,8 +414,7 @@ export default function App() {
                       <button className="w-full text-left px-4 py-3 text-[10px] uppercase tracking-widest font-bold text-sm-ink/60 hover:text-sm-ink hover:bg-sm-hover transition-all flex items-center gap-3">
                         <ShoppingBag size={14} strokeWidth={1.5} /> Orders
                       </button>
-                      <button 
-                        onClick={() => toggleWishlist(-1)} // Just a placeholder trigger for UI testing
+                      <button
                         className="w-full text-left px-4 py-3 text-[10px] uppercase tracking-widest font-bold text-sm-ink/60 hover:text-sm-ink hover:bg-sm-hover transition-all flex items-center gap-3"
                       >
                         <Heart size={14} strokeWidth={1.5} /> Saved Items ({wishlist.length})
@@ -532,7 +558,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsAuthModalOpen(false)}
+              onClick={() => { setIsAuthModalOpen(false); setAuthError(null); }}
               className="fixed inset-0 z-[70] bg-sm-ink/60 backdrop-blur-md"
             />
             <motion.div 
@@ -541,8 +567,8 @@ export default function App() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[75] bg-sm-bg p-12 shadow-2xl border border-sm-border"
             >
-              <button 
-                onClick={() => setIsAuthModalOpen(false)}
+              <button
+                onClick={() => { setIsAuthModalOpen(false); setAuthError(null); }}
                 className="absolute top-8 right-8 text-sm-ink/20 hover:text-sm-ink transition-colors"
               >
                 <X size={24} />
@@ -606,13 +632,18 @@ export default function App() {
                     <div className="flex-1 h-px bg-sm-border" />
                   </div>
 
-                  <button 
+                  <button
                     type="button"
                     disabled={isAuthLoading}
                     onClick={handleGoogleSignIn}
                     className="w-full py-5 border border-sm-border text-sm-ink text-[10px] uppercase tracking-[0.4em] font-black group relative overflow-hidden active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                   >
-                    <Star size={14} className="text-sm-ink/40" /> 
+                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
                     <span>{isAuthLoading ? 'Please Wait' : 'Continue with Google'}</span>
                   </button>
 
@@ -622,8 +653,8 @@ export default function App() {
                   <p className="text-[9px] uppercase tracking-widest font-bold text-sm-ink/30 italic">
                     {authMode === 'login' ? "Don't have an account yet?" : "Already a regular patron?"}
                   </p>
-                  <button 
-                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                  <button
+                    onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(null); }}
                     className="text-[10px] uppercase tracking-[0.3em] font-black text-sm-accent border-b border-sm-accent/20 pb-1 hover:border-sm-accent transition-all"
                   >
                     {authMode === 'login' ? 'Request Enrollment' : 'Sign In Instead'}
@@ -713,7 +744,7 @@ export default function App() {
             >
               <div className="flex items-center justify-center gap-6">
                 <div className="w-16 h-[1px] bg-sm-accent/40" />
-                <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Collection 2025</span>
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Collection 2026</span>
                 <div className="w-16 h-[1px] bg-sm-accent/40" />
               </div>
               
@@ -732,7 +763,10 @@ export default function App() {
               transition={{ delay: 0.8, duration: 1, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8"
             >
-              <button className="group relative w-full sm:w-auto px-16 py-6 bg-sm-bg text-sm-ink uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden">
+              <button
+                onClick={() => { setActiveTab('Women'); scrollToProducts(); }}
+                className="group relative w-full sm:w-auto px-16 py-6 bg-sm-bg text-sm-ink uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden"
+              >
                 <span className="relative z-10 group-hover:text-sm-bg transition-colors duration-500">The Women Edit</span>
                 <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
               </button>
@@ -834,7 +868,10 @@ export default function App() {
               ))}
             </div>
 
-            <button className="group relative px-12 py-6 bg-sm-accent text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black overflow-hidden">
+            <button
+              onClick={() => { setActiveTab('All'); scrollToProducts(); }}
+              className="group relative px-12 py-6 bg-sm-accent text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black overflow-hidden"
+            >
               <span className="relative z-10">Discover The Sale</span>
               <div className="absolute inset-0 bg-sm-ink translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
             </button>
@@ -1205,7 +1242,7 @@ export default function App() {
 
           <div className="mt-32 pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-12">
             <div className="flex flex-col md:flex-row gap-4 md:gap-12 items-center text-[9px] uppercase tracking-[0.4em] font-black text-sm-bg/20">
-              <p>© 2025 SM Department Store. ALL RIGHTS RESERVED.</p>
+              <p>© 2026 SM Department Store. ALL RIGHTS RESERVED.</p>
               <p className="hidden md:block">MANILA · PASAY · QUEZON CITY</p>
             </div>
             <div className="flex gap-10 text-[9px] uppercase tracking-[0.4em] font-black text-sm-bg/20">
