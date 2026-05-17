@@ -10,7 +10,14 @@ import {
   Instagram, Facebook, Twitter, Youtube,
   Gift, Star, CreditCard, ChevronRight
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useInView, animate } from 'motion/react';
+import Lenis from 'lenis';
+import Cursor from './components/Cursor';
+import TextReveal from './components/TextReveal';
+import ScrollProgress from './components/ScrollProgress';
+import Preloader from './components/Preloader';
+import GrainOverlay from './components/GrainOverlay';
+import ScrambleText from './components/ScrambleText';
 
 // --- Types ---
 
@@ -78,6 +85,21 @@ const ErrorState = ({ message }: { message: string }) => (
   </div>
 );
 
+function CounterAnimation({ value, suffix }: { value: number; suffix: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true });
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+
+  useEffect(() => {
+    if (isInView) {
+      animate(count, value, { duration: 2.5, ease: [0.22, 1, 0.36, 1] });
+    }
+  }, [isInView]);
+
+  return <span ref={ref}><motion.span>{rounded}</motion.span>{suffix}</span>;
+}
+
 export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -101,12 +123,20 @@ export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPreloading, setIsPreloading] = useState(true);
 
   const productsRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const categoriesRef = useRef<HTMLElement>(null);
+  const lenisRef = useRef<any>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
   const scrollToProducts = () => {
-    productsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (lenisRef.current && productsRef.current) {
+      lenisRef.current.scrollTo(productsRef.current, { offset: -80 });
+    } else {
+      productsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   // --- Auth Logic (Mocked for Local Use) ---
@@ -337,10 +367,40 @@ export default function App() {
     return cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   }, [cartItems]);
 
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    });
+    lenisRef.current = lenis;
+    let raf: number;
+    const tick = (time: number) => { lenis.raf(time); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); lenis.destroy(); };
+  }, []);
+
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const heroTextY = useTransform(heroProgress, [0, 1], ['0%', '-25%']);
+  const heroOpacity = useTransform(heroProgress, [0, 0.65], [1, 0]);
+  const heroBgScale = useTransform(heroProgress, [0, 1], [1, 1.2]);
+
+  const { scrollYProgress: categoriesProgress } = useScroll({
+    target: categoriesRef,
+    offset: ['start start', 'end end'],
+  });
+  const categoriesX = useTransform(categoriesProgress, [0, 1], ['0vw', '-400vw']);
+
   if (error) return <ErrorState message={error} />;
 
   return (
     <div className="min-h-screen selection:bg-sm-accent selection:text-sm-bg selection:bg-opacity-90">
+      {isPreloading && <Preloader onComplete={() => setIsPreloading(false)} />}
+      <GrainOverlay />
+      <ScrollProgress />
+      <Cursor />
       {/* 1. NAVBAR */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-700 ${
         isScrolled ? 'bg-sm-bg/90 backdrop-blur-xl border-b border-sm-border py-4' : 'bg-transparent py-10'
@@ -721,46 +781,61 @@ export default function App() {
 
       <main>
         {/* 2. HERO SECTION */}
-        <section className="relative h-[100vh] bg-sm-ink flex items-center justify-center overflow-hidden">
-          {/* Subtle slow moving background dots */}
-          <motion.div 
-            animate={{ 
-              backgroundPosition: ['0px 0px', '40px 40px'],
-            }}
-            transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-0 opacity-[0.03]" 
-            style={{ 
-              backgroundImage: `radial-gradient(circle at 1px 1px, #FFF 1.5px, transparent 0)`,
-              backgroundSize: '60px 60px' 
-            }} 
-          />
-          
-          <div className="max-w-5xl px-6 text-center space-y-12 z-10">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
-              className="space-y-10"
-            >
-              <div className="flex items-center justify-center gap-6">
+        <section ref={heroRef} className="relative h-[100vh] bg-sm-ink flex items-center justify-center overflow-hidden">
+          <motion.div style={{ scale: heroBgScale }} className="absolute inset-0">
+            <motion.div
+              animate={{ backgroundPosition: ['0px 0px', '40px 40px'] }}
+              transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-0 opacity-[0.03]"
+              style={{
+                backgroundImage: `radial-gradient(circle at 1px 1px, #FFF 1.5px, transparent 0)`,
+                backgroundSize: '60px 60px'
+              }}
+            />
+          </motion.div>
+
+          <motion.div style={{ y: heroTextY, opacity: heroOpacity }} className="max-w-5xl px-6 text-center space-y-12 z-10">
+            <div className="space-y-10">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="flex items-center justify-center gap-6"
+              >
                 <div className="w-16 h-[1px] bg-sm-accent/40" />
                 <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Collection 2026</span>
                 <div className="w-16 h-[1px] bg-sm-accent/40" />
-              </div>
-              
-              <h1 className="font-serif text-7xl md:text-[10rem] text-sm-bg leading-[0.85] tracking-tight">
-                Refined.<br/>Essential.
-              </h1>
-              
-              <p className="text-sm-bg/40 font-sans tracking-[0.4em] uppercase text-[11px] font-bold max-w-lg mx-auto leading-loose">
-                Philosophies of high-end retail craftsmanship brought to the heart of Manila.
-              </p>
-            </motion.div>
+              </motion.div>
 
-            <motion.div 
+              <h1 className="font-serif text-7xl md:text-[10rem] text-sm-bg leading-[0.85] tracking-tight">
+                {['Refined.', 'Essential.'].map((word, i) => (
+                  <div key={word} className="overflow-hidden">
+                    <motion.span
+                      initial={{ y: '110%' }}
+                      animate={{ y: 0 }}
+                      transition={{ duration: 1.2, delay: 0.35 + i * 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      className="block"
+                    >
+                      {word}
+                    </motion.span>
+                  </div>
+                ))}
+              </h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                className="text-sm-bg/40 font-sans tracking-[0.4em] uppercase text-[11px] font-bold max-w-lg mx-auto leading-loose"
+              >
+                Philosophies of high-end retail craftsmanship brought to the heart of Manila.
+              </motion.p>
+            </div>
+
+            <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 1.0, duration: 1, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8"
             >
               <button
@@ -770,20 +845,17 @@ export default function App() {
                 <span className="relative z-10 group-hover:text-sm-bg transition-colors duration-500">The Women Edit</span>
                 <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
               </button>
-              <button 
-                onClick={() => {
-                  setActiveTab('Men');
-                  scrollToProducts();
-                }}
+              <button
+                onClick={() => { setActiveTab('Men'); scrollToProducts(); }}
                 className="group relative w-full sm:w-auto px-16 py-6 border border-sm-bg/20 text-sm-bg uppercase tracking-[0.25em] text-[11px] font-black overflow-hidden"
               >
                 <span className="relative z-10">Modern Men</span>
                 <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
               </button>
             </motion.div>
-          </div>
+          </motion.div>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 2 }}
@@ -795,46 +867,76 @@ export default function App() {
               <a href="#" className="hover:text-sm-accent transition-colors">Stockists</a>
             </div>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8, duration: 1.5 }}
+            className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none"
+          >
+            <span className="text-[8px] uppercase tracking-[0.5em] text-sm-bg/20 font-black">Scroll</span>
+            <motion.div
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-[1px] h-10 bg-gradient-to-b from-sm-bg/30 to-transparent"
+            />
+          </motion.div>
         </section>
 
-        {/* 3. FEATURED CATEGORIES (Visible Grid Style) */}
-        <section className="bg-white border-b border-sm-border">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 h-auto">
-            {categories.map((category, i) => (
-              <motion.div 
-                key={category.id}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                onClick={() => {
-                  setActiveTab(category.name);
-                  scrollToProducts();
-                }}
-                className="group relative h-[600px] border-r border-sm-border last:border-r-0 cursor-pointer overflow-hidden flex flex-col items-center justify-end p-12"
-              >
-                <div className="absolute inset-0 bg-sm-hover opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                
-                {/* Vertical label background decor */}
-                <div className="absolute top-0 left-12 h-full w-[1px] bg-sm-border/30" />
-                <div className="absolute top-12 left-0 w-full h-[1px] bg-sm-border/30" />
-                
-                <motion.div 
-                  className="absolute inset-0 grayscale opacity-20 group-hover:opacity-40 group-hover:scale-110 transition-all duration-1000 ease-out"
-                  style={{ backgroundColor: ['#E8E4DF', '#F0EDE8', '#E2DCD5', '#D1CBC4', '#f5f2ed'][i % 5] }}
-                />
-
-                <div className="relative z-10 text-center space-y-6 flex flex-col items-center">
-                  <div className="p-4 bg-white/50 backdrop-blur-sm rounded-full mb-4 border border-white/50 transition-transform group-hover:scale-110">
-                    <ArrowRight size={24} strokeWidth={1} className="-rotate-45 group-hover:rotate-0 transition-transform duration-500" />
-                  </div>
-                  <h3 className="font-serif text-5xl text-sm-ink tracking-tight">{category.name}</h3>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-sm-ink/40 font-bold max-w-[150px] leading-relaxed transition-opacity opacity-0 group-hover:opacity-100 duration-500">
-                    {category.description}
-                  </p>
-                </div>
-              </motion.div>
+        {/* OVERSIZED MARQUEE DIVIDER */}
+        <div className="bg-sm-ink py-5 overflow-hidden select-none border-b border-white/5">
+          <div className="flex animate-marquee-slow whitespace-nowrap">
+            {[...Array(8)].map((_, i) => (
+              <span key={i} className="font-serif text-[7vw] text-sm-bg/[0.07] tracking-tighter mx-12 shrink-0 leading-none">
+                REFINED · ESSENTIAL · CURATED · ELEVATED · PRESTIGE · 2026
+              </span>
             ))}
+          </div>
+        </div>
+
+        {/* 3. FEATURED CATEGORIES — HORIZONTAL PINNED SCROLL */}
+        <section ref={categoriesRef} className="relative h-[600vh] bg-sm-bg">
+          <div className="sticky top-0 h-screen overflow-hidden">
+            {/* Section label */}
+            <div className="absolute top-12 left-12 z-20 flex items-center gap-4">
+              <div className="w-8 h-[1px] bg-sm-accent" />
+              <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Browse The House</span>
+            </div>
+            {/* Scroll hint */}
+            <div className="absolute top-12 right-12 z-20 text-[9px] uppercase tracking-[0.4em] font-black text-sm-ink/20 hidden md:block">
+              Scroll to explore →
+            </div>
+
+            <motion.div style={{ x: categoriesX }} className="flex h-full items-stretch w-max will-change-transform">
+              {categories.map((category, i) => (
+                <div
+                  key={category.id}
+                  onClick={() => { setActiveTab(category.name); scrollToProducts(); }}
+                  className="relative w-screen h-screen flex items-center justify-center cursor-pointer group overflow-hidden border-r border-sm-border/40"
+                  style={{ backgroundColor: ['#F5F2EE', '#EFECE7', '#EAE6E0', '#E3DED8', '#DDD7D0'][i % 5] }}
+                >
+                  {/* Bleeder oversized category name */}
+                  <h2 className="font-serif text-[20vw] text-sm-ink/[0.07] group-hover:text-sm-ink/[0.14] transition-colors duration-700 leading-none tracking-tighter select-none pointer-events-none absolute inset-x-0 text-center">
+                    {category.name}
+                  </h2>
+
+                  {/* Center card */}
+                  <div className="relative z-10 flex flex-col items-center gap-8 text-center">
+                    <span className="text-[10px] uppercase tracking-[0.5em] font-black text-sm-ink/30">0{i + 1} / 0{categories.length}</span>
+                    <div className="w-[1px] h-16 bg-sm-ink/20" />
+                    <h3 className="font-serif text-7xl md:text-9xl text-sm-ink tracking-tight leading-none">{category.name}</h3>
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-sm-ink/40 font-bold max-w-xs leading-loose">{category.description}</p>
+                    <div className="mt-4 flex items-center gap-4 border-b border-sm-ink/20 pb-2 text-[10px] uppercase tracking-[0.4em] font-black text-sm-ink/50 group-hover:text-sm-ink group-hover:border-sm-ink transition-all duration-500">
+                      Shop {category.name}
+                      <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-500" />
+                    </div>
+                  </div>
+
+                  {/* Corner index */}
+                  <span className="absolute bottom-16 left-16 font-serif text-[18vw] text-sm-ink/[0.04] leading-none select-none pointer-events-none">{String(i + 1).padStart(2, '0')}</span>
+                </div>
+              ))}
+            </motion.div>
           </div>
         </section>
 
@@ -848,9 +950,11 @@ export default function App() {
             <div className="space-y-6 text-center lg:text-left max-w-xl">
               <div className="flex items-center justify-center lg:justify-start gap-4">
                 <div className="w-8 h-[1px] bg-sm-accent" />
-                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Limited Event</span>
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black"><ScrambleText text="Limited Event" /></span>
               </div>
-              <h2 className="font-serif text-5xl md:text-7xl text-sm-bg leading-none tracking-tight">The Mid-Year<br/>Statement.</h2>
+              <TextReveal>
+                <h2 className="font-serif text-5xl md:text-7xl text-sm-bg leading-none tracking-tight">The Mid-Year<br/>Statement.</h2>
+              </TextReveal>
               <p className="text-sm-bg/40 uppercase tracking-[0.25em] text-[11px] font-bold">Uncompromising value. Up to 70% off luxury ready-to-wear.</p>
             </div>
             
@@ -884,11 +988,13 @@ export default function App() {
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <div className="w-8 h-[1px] bg-sm-accent" />
-                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Seasonal Edit</span>
+                <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black"><ScrambleText text="Seasonal Edit" /></span>
               </div>
-              <h2 className="font-serif text-6xl md:text-8xl text-sm-ink tracking-tight">
-                {activeTab === 'All' ? 'The New Standard.' : `${activeTab} Collection.`}
-              </h2>
+              <TextReveal>
+                <h2 className="font-serif text-6xl md:text-8xl text-sm-ink tracking-tight">
+                  {activeTab === 'All' ? 'The New Standard.' : `${activeTab} Collection.`}
+                </h2>
+              </TextReveal>
             </div>
             
             <div className="flex flex-wrap gap-10">
@@ -1030,6 +1136,35 @@ export default function App() {
           </div>
         </section>
 
+        {/* 6.5 STATS SECTION */}
+        <section className="py-0 bg-sm-ink overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 md:px-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 border-x border-white/10">
+              {[
+                { value: 70, suffix: '+', label: 'Flagship Stores' },
+                { value: 1958, suffix: '', label: 'Est. in Manila' },
+                { value: 500, suffix: '+', label: 'Premium Brands' },
+                { value: 20, suffix: 'M+', label: 'Loyal Patrons' },
+              ].map((stat, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="px-12 py-20 group hover:bg-white/5 transition-colors duration-500 cursor-default"
+                >
+                  <div className="font-serif text-5xl md:text-7xl text-sm-bg mb-4 tracking-tight">
+                    <CounterAnimation value={stat.value} suffix={stat.suffix} />
+                  </div>
+                  <div className="h-px bg-white/10 mb-5 w-0 group-hover:w-full transition-all duration-700" />
+                  <p className="text-[10px] uppercase tracking-[0.4em] font-black text-sm-bg/30">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* 7. STORE LOCATOR (Split Grid) */}
         <section id="stores" className="py-32 md:py-48 px-6 md:px-12 max-w-7xl mx-auto space-y-32">
           <div className="flex flex-col lg:flex-row gap-24 items-start">
@@ -1037,9 +1172,11 @@ export default function App() {
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-8 h-[1px] bg-sm-accent" />
-                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Philippine Heritage</span>
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black"><ScrambleText text="Philippine Heritage" /></span>
                 </div>
-                <h2 className="font-serif text-6xl text-sm-ink leading-[0.9] tracking-tight">The Houses of SM.</h2>
+                <TextReveal>
+                  <h2 className="font-serif text-6xl text-sm-ink leading-[0.9] tracking-tight">The Houses of SM.</h2>
+                </TextReveal>
               </div>
               <p className="text-sm-ink/50 text-[13px] leading-relaxed font-medium uppercase tracking-wider">
                 Discover curated spaces that blend Philippine craftsmanship with international precision. Each flagship house is a testament to the future of retail.
@@ -1117,9 +1254,11 @@ export default function App() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-[1px] bg-sm-accent" />
-                    <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Prestige Membership</span>
+                    <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black"><ScrambleText text="Prestige Membership" /></span>
                   </div>
-                  <h2 className="font-serif text-7xl md:text-8xl leading-none">Advantage.</h2>
+                  <TextReveal>
+                    <h2 className="font-serif text-[14vw] leading-none tracking-tighter">Advantage.</h2>
+                  </TextReveal>
                   <p className="text-sm-bg/40 text-xl font-serif max-w-lg italic">"A membership defining contemporary Philippine luxury and unparalleled service."</p>
                 </div>
                 
