@@ -408,55 +408,64 @@ export default function App() {
       }`}>
         <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
           <div className="flex items-center gap-16">
-            <button onClick={() => setIsMenuOpen(true)} className="lg:hidden text-sm-ink p-1">
+            <button onClick={() => setIsMenuOpen(true)} className={`lg:hidden p-1 transition-colors duration-500 ${isScrolled ? 'text-sm-ink' : 'text-white'}`}>
               <Menu size={24} strokeWidth={1.5} />
             </button>
-            
-            <div className="flex flex-col items-center leading-none group cursor-pointer">
-              <span className="font-serif text-3xl md:text-5xl tracking-tighter transition-transform group-hover:scale-105 duration-500">SM</span>
-              <span className="text-[9px] md:text-[10px] uppercase tracking-[0.3em] font-sans font-bold text-sm-ink/40">Department Store</span>
+
+            {/* SM Logo */}
+            <div className="flex flex-col items-center leading-none cursor-pointer select-none group">
+              <span className={`font-sans font-black text-4xl md:text-5xl tracking-[-0.05em] transition-colors duration-500 group-hover:text-sm-accent ${isScrolled ? 'text-sm-ink' : 'text-white'}`}>
+                SM
+              </span>
+              <span className={`text-[8px] uppercase tracking-[0.35em] font-bold transition-colors duration-500 ${isScrolled ? 'text-sm-ink/40' : 'text-white/50'}`}>
+                Department Store
+              </span>
             </div>
 
             <div className="hidden lg:flex items-center gap-10">
               {['Women', 'Men', 'Kids', 'Toys', 'Home', 'Beauty', 'Sale'].map((link) => (
-                <button 
-                  key={link} 
+                <button
+                  key={link}
                   onClick={() => {
                     setActiveTab(link === 'Sale' ? 'All' : link);
                     scrollToProducts();
                   }}
                   className={`text-[11px] uppercase tracking-[0.25rem] transition-all duration-300 font-bold relative group ${
-                    link === 'Sale' ? 'text-rose-700' : 'text-sm-ink/70 hover:text-sm-ink'
-                  } ${activeTab === link ? 'text-sm-ink' : ''}`}
+                    link === 'Sale'
+                      ? 'text-rose-400'
+                      : isScrolled
+                        ? 'text-sm-ink/60 hover:text-sm-ink'
+                        : 'text-white/70 hover:text-white'
+                  }`}
                 >
                   {link}
-                  <span className={`absolute -bottom-2 left-0 h-[1px] bg-sm-accent transition-all duration-500 ${activeTab === link ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+                  <span className={`absolute -bottom-2 left-0 h-px bg-sm-accent transition-all duration-500 ${activeTab === link ? 'w-full' : 'w-0 group-hover:w-full'}`} />
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex items-center gap-6 md:gap-10">
-            <div className="hidden md:flex items-center bg-sm-ink/5 rounded-full px-4 py-2 group focus-within:bg-sm-ink/10 transition-all">
-              <Search size={16} strokeWidth={1.5} className="text-sm-ink/40 group-focus-within:text-sm-ink" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="bg-transparent border-none outline-none text-[11px] uppercase tracking-widest pl-3 w-32 placeholder:text-sm-ink/20"
+            <div className={`hidden md:flex items-center rounded-full px-4 py-2 group transition-all ${isScrolled ? 'bg-sm-ink/5 focus-within:bg-sm-ink/10' : 'bg-white/10 focus-within:bg-white/20'}`}>
+              <Search size={16} strokeWidth={1.5} className={isScrolled ? 'text-sm-ink/40' : 'text-white/50'} />
+              <input
+                type="text"
+                placeholder="Search..."
+                className={`bg-transparent border-none outline-none text-[11px] uppercase tracking-widest pl-3 w-32 transition-colors ${isScrolled ? 'placeholder:text-sm-ink/20 text-sm-ink' : 'placeholder:text-white/30 text-white'}`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
               <div className="relative group/user">
-                <div 
+                <div
                   onClick={() => user ? null : setIsAuthModalOpen(true)}
                   className="group flex items-center gap-3 cursor-pointer"
                 >
                   <div className="relative">
-                    <User size={20} strokeWidth={1.2} className="group-hover:text-sm-accent group-hover:scale-110 transition-all duration-300" />
+                    <User size={20} strokeWidth={1.2} className={`group-hover:text-sm-accent group-hover:scale-110 transition-all duration-300 ${isScrolled ? 'text-sm-ink' : 'text-white'}`} />
                     {user && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sm-accent rounded-full border-2 border-sm-bg shadow-sm" />}
                   </div>
-                  {user && <span className="hidden lg:block text-[9px] uppercase tracking-[0.2em] font-black text-sm-ink/40">{user.email.split('@')[0]}</span>}
+                  {user && <span className={`hidden lg:block text-[9px] uppercase tracking-[0.2em] font-black ${isScrolled ? 'text-sm-ink/40' : 'text-white/50'}`}>{user.email.split('@')[0]}</span>}
                 </div>
 
                 {user && (
@@ -493,12 +502,12 @@ export default function App() {
                 )}
               </div>
 
-            <div 
+            <div
               onClick={() => setIsCartOpen(true)}
               className="relative cursor-pointer group"
             >
-              <ShoppingBag size={20} strokeWidth={1.2} className="group-hover:text-sm-accent group-hover:scale-110 transition-all duration-300" />
-              <span className="absolute -top-1.5 -right-1.5 bg-sm-ink text-sm-bg text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-black">
+              <ShoppingBag size={20} strokeWidth={1.2} className={`group-hover:text-sm-accent group-hover:scale-110 transition-all duration-300 ${isScrolled ? 'text-sm-ink' : 'text-white'}`} />
+              <span className={`absolute -top-1.5 -right-1.5 text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-black ${isScrolled ? 'bg-sm-ink text-sm-bg' : 'bg-white text-sm-ink'}`}>
                 {cartCount}
               </span>
             </div>
