@@ -1383,64 +1383,98 @@ export default function App() {
           </div>
         </section>
 
-        {/* 8. LOYALTY (Immersive Layout) */}
-        <section className="py-48 bg-sm-ink text-sm-bg overflow-hidden relative">
+        {/* 8. SM ADVANTAGE CARD */}
+        <section className="bg-sm-ink text-sm-bg overflow-hidden relative">
           <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileInView={{ opacity: 0.03, scale: 1 }}
-            transition={{ duration: 2 }}
-            className="absolute -right-40 -top-40 w-[800px] h-[800px] border-[100px] border-sm-accent rounded-full pointer-events-none" 
-          />
-          
-          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-32 items-center">
-              <div className="space-y-12">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 h-[1px] bg-sm-accent" />
-                    <span className="text-sm-accent text-[11px] uppercase tracking-[0.5em] font-black">Prestige Membership</span>
-                  </div>
-                  <TextReveal>
-                    <h2 className="font-serif text-[14vw] leading-none tracking-tighter">Advantage.</h2>
-                  </TextReveal>
-                  <p className="text-sm-bg/40 text-xl font-serif max-w-lg italic">"A membership defining contemporary Philippine luxury and unparalleled service."</p>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <button 
-                    onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
-                    className="px-16 py-6 bg-sm-accent text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black hover:brightness-110 active:scale-95 transition-all"
-                  >
-                    Enroll Online
-                  </button>
-                  <button className="px-16 py-6 border border-sm-bg/20 text-sm-bg uppercase tracking-[0.3em] text-[11px] font-black hover:bg-white/10 transition-all">The Benefits</button>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {[
-                  { icon: <Gift size={32} strokeWidth={1} />, title: "Reward System", desc: "Currency earned through loyalty, redeemed through excellence." },
-                  { icon: <Star size={32} strokeWidth={1} />, title: "Concierge access", desc: "Private styling and priority entry to curated seasonal events." },
-                  { icon: <CreditCard size={32} strokeWidth={1} />, title: "Global Network", desc: "Privileges extending beyond retail to hospitality and travel." },
-                  { icon: <ArrowRight size={32} strokeWidth={1} />, title: "Platinum Tiers", desc: "Elevating the most loyal patrons to exclusive elite statuses." }
-                ].map((benefit, i) => (
-                  <motion.div 
-                    key={i} 
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.2 }}
-                    className="p-10 bg-white/5 border border-white/10 backdrop-blur-md rounded-sm aspect-square flex flex-col justify-between hover:bg-white/10 transition-colors cursor-default"
+          {/* Background card visual */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[500px] h-[300px] opacity-[0.04] pointer-events-none hidden lg:block">
+            <div className="w-full h-full border-2 border-white rounded-2xl" />
+          </div>
+
+          <div className="max-w-7xl mx-auto px-6 md:px-12 py-32 relative z-10">
+
+            {/* Header */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-end border-b border-white/10 pb-20 mb-20">
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-px bg-sm-accent" />
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Loyalty Program</span>
+                </div>
+                <TextReveal>
+                  <h2 className="font-serif text-5xl md:text-7xl leading-none tracking-tight">SM Advantage Card</h2>
+                </TextReveal>
+              </div>
+              <div className="space-y-6">
+                <p className="text-white/40 text-[13px] leading-relaxed tracking-wider">
+                  The SM Advantage Card is the Philippines' largest loyalty program with over 10 million members. Earn points on every purchase across SM Department Store, SM Supermarket, SM Appliances, and more — then redeem them for exclusive rewards.
+                </p>
+                <div className="flex gap-4 flex-wrap">
+                  <button
+                    onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
+                    className="group relative px-10 py-5 bg-sm-accent text-sm-bg uppercase tracking-[0.25em] text-[10px] font-black overflow-hidden"
                   >
-                    <div className="text-sm-accent">{benefit.icon}</div>
-                    <div className="space-y-4">
-                      <h4 className="font-serif text-3xl font-light">{benefit.title}</h4>
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-sm-bg/30 font-bold leading-relaxed">{benefit.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
+                    <span className="relative z-10">Apply Now — Free</span>
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                  </button>
+                  <button className="px-10 py-5 border border-white/20 text-white/60 uppercase tracking-[0.25em] text-[10px] font-black hover:border-white/50 hover:text-white transition-all">
+                    Learn More
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* Benefits grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10">
+              {[
+                {
+                  icon: <CreditCard size={28} strokeWidth={1} />,
+                  title: 'Earn Points',
+                  desc: 'Get 1 point for every ₱200 spent across all SM stores and partner establishments.',
+                },
+                {
+                  icon: <Gift size={28} strokeWidth={1} />,
+                  title: 'Redeem Rewards',
+                  desc: 'Convert points to SM Gift Certificates, shopping credits, or exclusive merchandise.',
+                },
+                {
+                  icon: <Star size={28} strokeWidth={1} />,
+                  title: 'Member Exclusives',
+                  desc: 'Early access to sale events, birthday treats, and special member-only promotions.',
+                },
+                {
+                  icon: <Heart size={28} strokeWidth={1} />,
+                  title: 'Use Everywhere',
+                  desc: 'Valid at SM Department Store, SM Supermarket, SM Appliances, Toy Kingdom & more.',
+                },
+              ].map((benefit, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.1 }}
+                  className="bg-sm-ink p-10 flex flex-col gap-10 hover:bg-white/5 transition-colors duration-300 group"
+                >
+                  <div className="text-sm-accent">{benefit.icon}</div>
+                  <div className="space-y-3">
+                    <h4 className="font-serif text-2xl text-white tracking-tight group-hover:text-sm-accent transition-colors duration-300">{benefit.title}</h4>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold leading-relaxed">{benefit.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Bottom note */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1, delay: 0.3 }}
+              className="mt-12 text-center text-[10px] uppercase tracking-[0.4em] font-black text-white/15"
+            >
+              10,000,000+ Members · Free to Join · No Annual Fee
+            </motion.p>
           </div>
         </section>
       </main>
