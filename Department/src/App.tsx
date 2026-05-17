@@ -87,7 +87,7 @@ const ErrorState = ({ message }: { message: string }) => (
 
 const CATEGORY_IMAGES: Record<string, string> = {
   Women:  'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80',
-  Men:    'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=1200&q=80',
+  Men:    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=1200&q=80',
   Kids:   'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=1200&q=80',
   Toys:   'https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=1200&q=80',
   Home:   'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80',
