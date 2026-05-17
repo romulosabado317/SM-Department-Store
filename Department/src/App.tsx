@@ -784,14 +784,21 @@ export default function App() {
         {/* 2. HERO SECTION — Full-screen cinematic */}
         <section ref={heroRef} className="relative h-screen overflow-hidden">
 
-          {/* Full-bleed background image with parallax */}
-          <motion.div style={{ scale: heroBgScale }} className="absolute inset-0 origin-center">
-            <img
-              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1800&q=80"
-              alt=""
-              className="w-full h-full object-cover object-top"
+          {/* Full-bleed YouTube video background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <iframe
+              src="https://www.youtube.com/embed/Bujx23AJDsQ?autoplay=1&mute=1&loop=1&playlist=Bujx23AJDsQ&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+              style={{
+                width: '100vw',
+                height: '56.25vw',
+                minHeight: '100vh',
+                minWidth: '177.78vh',
+                border: 'none',
+              }}
+              allow="autoplay; encrypted-media"
             />
-          </motion.div>
+          </div>
 
           {/* Layered gradients for legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/40" />
