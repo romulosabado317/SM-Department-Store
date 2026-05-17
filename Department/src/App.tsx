@@ -781,99 +781,106 @@ export default function App() {
       </AnimatePresence>
 
       <main>
-        {/* 2. HERO SECTION — Editorial Split */}
-        <section ref={heroRef} className="relative h-screen bg-sm-ink flex overflow-hidden">
+        {/* 2. HERO SECTION — Full-screen cinematic */}
+        <section ref={heroRef} className="relative h-screen overflow-hidden">
 
-          {/* Left: Typography column */}
+          {/* Full-bleed background image with parallax */}
+          <motion.div style={{ scale: heroBgScale }} className="absolute inset-0 origin-center">
+            <img
+              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1800&q=80"
+              alt=""
+              className="w-full h-full object-cover object-top"
+            />
+          </motion.div>
+
+          {/* Layered gradients for legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
+
+          {/* Top-right tag */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4, duration: 1 }}
+            className="absolute top-10 right-10 md:top-20 md:right-16 z-10 flex items-center gap-3"
+          >
+            <div className="w-6 h-px bg-sm-accent/60" />
+            <span className="text-[9px] uppercase tracking-[0.5em] text-white/40 font-black">Collection 2026</span>
+          </motion.div>
+
+          {/* Main text — bottom left */}
           <motion.div
             style={{ y: heroTextY, opacity: heroOpacity }}
-            className="relative z-10 flex flex-col justify-between p-10 md:p-16 lg:p-24 w-full md:w-[55%]"
+            className="absolute inset-x-0 bottom-0 z-10 p-10 md:p-16 lg:p-24 space-y-8"
           >
-            {/* Top meta bar */}
+            {/* Eyebrow */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 1 }}
-              className="flex items-center justify-between"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="flex items-center gap-4"
             >
-              <span className="text-[10px] uppercase tracking-[0.5em] text-sm-bg/30 font-black">Est. 1958 · Manila</span>
-              <span className="text-[10px] uppercase tracking-[0.5em] text-sm-bg/30 font-black">Collection 2026</span>
+              <div className="w-10 h-px bg-sm-accent" />
+              <span className="text-sm-accent text-[10px] uppercase tracking-[0.5em] font-black">Est. 1958 · Manila, Philippines</span>
             </motion.div>
 
-            {/* Stacked headline */}
-            <div>
-              {['The', 'New', 'Standard.'].map((word, i) => (
-                <div key={word} className="overflow-hidden">
-                  <motion.span
-                    initial={{ y: '110%' }}
+            {/* Headline */}
+            <div className="overflow-hidden">
+              {['The New', 'Standard.'].map((line, i) => (
+                <div key={line} className="overflow-hidden">
+                  <motion.h1
+                    initial={{ y: '105%' }}
                     animate={{ y: 0 }}
-                    transition={{ duration: 1.1, delay: 0.4 + i * 0.14, ease: [0.22, 1, 0.36, 1] }}
-                    className="block font-serif text-[18vw] md:text-[9vw] leading-[0.88] tracking-tight text-sm-bg"
+                    transition={{ duration: 1.1, delay: 0.75 + i * 0.15, ease: [0.22, 1, 0.36, 1] }}
+                    className="block font-serif text-[14vw] md:text-[9vw] leading-[0.88] tracking-tight text-white"
                   >
-                    {word}
-                  </motion.span>
+                    {line}
+                  </motion.h1>
                 </div>
               ))}
             </div>
 
-            {/* Bottom: description + CTA */}
+            {/* Divider + description + CTA */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              className="space-y-8"
+              transition={{ delay: 1.2, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col md:flex-row md:items-end gap-8 md:gap-16 pt-2"
             >
-              <div className="w-12 h-px bg-sm-accent" />
-              <p className="text-sm-bg/40 text-[11px] uppercase tracking-[0.35em] font-bold max-w-xs leading-loose">
+              <p className="text-white/40 text-[11px] uppercase tracking-[0.3em] font-bold max-w-xs leading-loose">
                 High-end retail craftsmanship brought to the heart of Manila.
               </p>
-              <div className="flex items-center gap-8 flex-wrap">
+              <div className="flex items-center gap-6">
                 <button
                   onClick={() => { setActiveTab('Women'); scrollToProducts(); }}
-                  className="group relative px-10 py-5 bg-sm-bg text-sm-ink uppercase tracking-[0.25em] text-[10px] font-black overflow-hidden"
+                  className="group relative px-10 py-5 bg-white text-black uppercase tracking-[0.25em] text-[10px] font-black overflow-hidden"
                 >
-                  <span className="relative z-10 group-hover:text-sm-bg transition-colors duration-500">Shop Women</span>
+                  <span className="relative z-10 group-hover:text-white transition-colors duration-500">Shop Now</span>
                   <div className="absolute inset-0 bg-sm-accent translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
                 </button>
                 <button
-                  onClick={() => { setActiveTab('Men'); scrollToProducts(); }}
-                  className="flex items-center gap-3 text-sm-bg/50 text-[10px] uppercase tracking-[0.35em] font-black hover:text-sm-bg transition-colors duration-300"
+                  onClick={() => { setActiveTab('All'); scrollToProducts(); }}
+                  className="flex items-center gap-3 text-white/50 text-[10px] uppercase tracking-[0.35em] font-black hover:text-white transition-colors duration-300"
                 >
-                  Shop Men <ArrowRight size={14} />
+                  Explore All <ArrowRight size={14} />
                 </button>
               </div>
             </motion.div>
           </motion.div>
 
-          {/* Right: Full-bleed fashion image */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="hidden md:block absolute right-0 top-0 bottom-0 w-[48%] overflow-hidden"
-          >
-            <motion.img
-              src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1400&q=80"
-              alt="SM Collection 2026"
-              style={{ scale: heroBgScale }}
-              className="w-full h-full object-cover object-top"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-sm-ink via-sm-ink/20 to-transparent pointer-events-none" />
-          </motion.div>
-
-          {/* Scroll cue */}
+          {/* Scroll indicator — right side vertical */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.8, duration: 1.5 }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none z-10"
+            transition={{ delay: 2, duration: 1.5 }}
+            className="absolute bottom-12 right-10 md:right-16 flex flex-col items-center gap-4 pointer-events-none z-10"
           >
-            <span className="text-[8px] uppercase tracking-[0.5em] text-sm-bg/20 font-black">Scroll</span>
             <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-px h-10 bg-gradient-to-b from-sm-bg/30 to-transparent"
+              animate={{ scaleY: [1, 0.4, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-px h-16 bg-gradient-to-b from-white/40 to-transparent origin-top"
             />
+            <span className="text-[8px] uppercase tracking-[0.4em] text-white/20 font-black" style={{ writingMode: 'vertical-rl' }}>Scroll</span>
           </motion.div>
         </section>
 
