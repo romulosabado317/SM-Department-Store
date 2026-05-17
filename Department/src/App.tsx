@@ -1152,30 +1152,159 @@ export default function App() {
           </div>
         </section>
 
-        {/* 6.5 STATS SECTION */}
-        <section className="py-0 bg-sm-ink overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6 md:px-12">
-            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 border-x border-white/10">
+        {/* 6.5 SM LEGACY — Heritage & Story */}
+        <section className="bg-sm-ink text-sm-bg overflow-hidden">
+          {/* Ghost background text */}
+          <div className="absolute pointer-events-none select-none opacity-[0.02] font-black text-[30vw] text-white leading-none overflow-hidden" style={{ right: '-5vw' }}>SM</div>
+
+          <div className="max-w-7xl mx-auto px-6 md:px-12 py-32 relative z-10">
+
+            {/* Header */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-32 items-end pb-20 border-b border-white/10 mb-20">
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-px bg-sm-accent" />
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Philippine Institution</span>
+                </div>
+                <TextReveal>
+                  <h2 className="font-serif text-5xl md:text-7xl leading-none tracking-tight">A Legacy Built<br/>on Filipino Trust.</h2>
+                </TextReveal>
+              </div>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className="text-white/40 text-[13px] leading-relaxed tracking-wider"
+              >
+                In 1958, Henry Sy Sr. opened a modest shoe store on Carriedo Street in Quiapo, Manila. What started as a single shopfront became the Philippines' most trusted retail institution — SM Department Store. Today, SM stands as a symbol of Filipino aspiration, quality, and community.
+              </motion.p>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10">
               {[
-                { value: 70, suffix: '+', label: 'Flagship Stores' },
-                { value: 1958, suffix: '', label: 'Est. in Manila' },
-                { value: 500, suffix: '+', label: 'Premium Brands' },
-                { value: 20, suffix: 'M+', label: 'Loyal Patrons' },
+                { value: 70, suffix: '+', label: 'Flagship Stores', sub: 'Across Luzon, Visayas & Mindanao' },
+                { value: 1958, suffix: '', label: 'Founded in Manila', sub: 'By Henry Sy Sr. on Carriedo St.' },
+                { value: 500, suffix: '+', label: 'Premium Brands', sub: 'Local and international labels' },
+                { value: 10, suffix: 'M+', label: 'SM Advantage Members', sub: 'The Philippines\' largest loyalty program' },
               ].map((stat, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 40 }}
+                  initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.8, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  className="px-12 py-20 group hover:bg-white/5 transition-colors duration-500 cursor-default"
+                  transition={{ duration: 0.7, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="px-8 md:px-12 py-14 group hover:bg-white/5 transition-colors duration-500 cursor-default"
                 >
-                  <div className="font-serif text-5xl md:text-7xl text-sm-bg mb-4 tracking-tight">
+                  <div className="font-serif text-5xl md:text-6xl text-sm-bg mb-3 tracking-tight">
                     <CounterAnimation value={stat.value} suffix={stat.suffix} />
                   </div>
-                  <div className="h-px bg-white/10 mb-5 w-0 group-hover:w-full transition-all duration-700" />
-                  <p className="text-[10px] uppercase tracking-[0.4em] font-black text-sm-bg/30">{stat.label}</p>
+                  <p className="text-[10px] uppercase tracking-[0.4em] font-black text-sm-bg/50 mb-2">{stat.label}</p>
+                  <div className="h-px bg-white/10 mb-3 w-0 group-hover:w-full transition-all duration-700" />
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-white/20 font-bold leading-relaxed">{stat.sub}</p>
                 </motion.div>
+              ))}
+            </div>
+
+            {/* Timeline milestones */}
+            <div className="mt-20 pt-16 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-8">
+              {[
+                { year: '1958', event: 'Henry Sy Sr. opens the first ShoeMart on Carriedo St., Quiapo, Manila' },
+                { year: '1985', event: 'SM North EDSA opens — the very first SM Shopping Mall in the Philippines' },
+                { year: '2006', event: 'SM Mall of Asia opens in Pasay, one of the largest malls in Asia' },
+                { year: 'Today', event: '70+ department stores spanning every major city across the archipelago' },
+              ].map((milestone, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.12 }}
+                  className="space-y-4"
+                >
+                  <span className="font-serif text-3xl text-sm-accent">{milestone.year}</span>
+                  <div className="w-full h-px bg-white/10" />
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold leading-loose">{milestone.event}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 6.6 SM EXPERIENCE — Department Showcase */}
+        <section className="bg-sm-bg">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-12">
+            <div className="flex items-end justify-between mb-16">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-px bg-sm-accent" />
+                  <span className="text-sm-accent text-[11px] uppercase tracking-[0.4em] font-black">Inside SM</span>
+                </div>
+                <TextReveal>
+                  <h2 className="font-serif text-5xl md:text-6xl text-sm-ink tracking-tight">The SM Experience.</h2>
+                </TextReveal>
+              </div>
+              <p className="hidden md:block text-[10px] uppercase tracking-[0.3em] font-black text-sm-ink/20 max-w-xs text-right leading-loose">Every floor tells a story of style, comfort, and Filipino living.</p>
+            </div>
+          </div>
+
+          {/* Editorial image grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2">
+            {/* Left: tall feature card */}
+            <div className="relative overflow-hidden group cursor-pointer" style={{ height: '75vh' }}>
+              <img
+                src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1400&q=80"
+                alt="SM Fashion"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-10 md:p-14 space-y-3">
+                <span className="text-[9px] uppercase tracking-[0.5em] font-black text-white/40">01 — Fashion</span>
+                <h3 className="font-serif text-4xl md:text-5xl text-white tracking-tight">The Fashion Floor</h3>
+                <p className="text-white/50 text-[11px] uppercase tracking-[0.25em] font-bold max-w-xs leading-loose">
+                  500+ local and international brands curated for every style and occasion.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: 3 stacked smaller */}
+            <div className="grid grid-rows-3" style={{ height: '75vh' }}>
+              {[
+                {
+                  label: '02 — Beauty & Wellness',
+                  title: 'Beauty Counter',
+                  desc: 'Premium skincare, cosmetics, and fragrance from global houses.',
+                  img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=900&q=80',
+                },
+                {
+                  label: '03 — Home & Living',
+                  title: 'Home & Living',
+                  desc: 'Furniture, décor, and appliances that elevate everyday life.',
+                  img: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=900&q=80',
+                },
+                {
+                  label: '04 — Toys & Hobbies',
+                  title: 'Toys & Hobbies',
+                  desc: 'The widest selection of toys, games, and collectibles in the Philippines.',
+                  img: 'https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=900&q=80',
+                },
+              ].map((item, i) => (
+                <div key={i} className="relative overflow-hidden group cursor-pointer border-t border-white/5">
+                  <img
+                    src={item.img}
+                    alt={item.title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors duration-500" />
+                  <div className="absolute inset-0 flex items-end p-6 md:p-8">
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase tracking-[0.5em] font-black text-white/30">{item.label}</span>
+                      <h4 className="font-serif text-2xl text-white tracking-tight group-hover:text-sm-accent transition-colors duration-300">{item.title}</h4>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold leading-relaxed hidden md:block">{item.desc}</p>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
